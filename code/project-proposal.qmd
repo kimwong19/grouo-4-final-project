@@ -189,6 +189,17 @@ DO_taxa <- aq_ins_clean |>
   mutate(taxon = fct_reorder(taxon, ave_lit, .fun = max, .desc = TRUE)) |> 
   # keep only the columns needed for the figure
   select(date, site, site_full, taxon, ave_lit, log_ave_lit, med_do)
+
+# creates median point location for each taxon
+DO_taxa_medians <- DO_taxa |>
+  # groups data by taxon so each species gets one median point
+  group_by(taxon) |>
+  # calculates median DO and median log abundance for each taxon
+  summarise(
+    med_do_point = median(med_do, na.rm = TRUE),
+    med_log_ave_lit = median(log_ave_lit, na.rm = TRUE),
+    .groups = "drop"
+)
 ```
 
 ```{r}
@@ -196,9 +207,8 @@ DO_taxa <- aq_ins_clean |>
 #| fig-width: 10
 #| fig-height: 8
 
-# base layer: ggplot
 DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot 
-                        # uses sal_taxa data frame
+                        # uses DO_taxa data frame
                         mapping = aes(x = med_do, # x-axis: med_do
                                       y = log_ave_lit, # y-axis: log_ave_lit
                                       color = taxon)) + # color by taxon
@@ -206,6 +216,14 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
   geom_point(shape = 16, # shape is circle
              size = 2, # size is 2
              alpha = 0.7) + # opacity is 0.7
+  
+  # second layer: larger point shows the median location for each taxon
+  geom_point(data = DO_taxa_medians,
+             mapping = aes(x = med_do_point,
+                           y = med_log_ave_lit),
+             shape = 18,
+             size = 5) +
+  
   # separate panels for each taxon with free x- and y-axis scales
   facet_wrap(~ taxon, scales = "free") +
   # use non-default colors for points
@@ -214,12 +232,11 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
        y = "log + 1 transformed average abundance/L", # relabel y-axis
        # creates descriptive title
        title = "Invertebrate abundance as a function of DO") +
+  
   # uses non-default theme
   theme_minimal() +
   # remove redundant legend
   theme(legend.position = "none")
-
-# shows plot
 DO_taxa_plot
 ```
 shows that individual taxa have noisy, weak, or inconsistent relationships with DO.
@@ -281,6 +298,39 @@ abundance_by_site <- aq_ins_clean |>
          taxon = str_to_title(taxon)) |> 
   # filter to include taxa of interest
   filter(taxon %in% focus_taxa)
+abundance <- ggplot(data = abundance_by_site,
+                   # x-axis: site
+                   # y-axis: mean abundance/L
+                   # color by taxon
+                   mapping = aes(x = site_full,
+                                 y = log_ave_lit, 
+                                 color = taxon)) +
+  # first layer: jitter points to represent observations
+  geom_jitter(width = 0.15,
+              height = 0,
+              alpha = 0.7) +
+  # add median point for each site within each taxon
+  stat_summary(fun = median,
+               geom = "point",
+               shape = 18,
+               size = 3,
+               color = "black") +
+  # facet by taxon
+  facet_wrap(~ taxon) +
+  # wrapping x-axis text
+  scale_x_discrete(labels = label_wrap(15)) +
+  # non-default colors
+  scale_color_viridis_d() +
+  # relabelling x- and y-axis, adding title
+  labs(x = "Site",
+       y = "log + 1 transformed average abundance/L",
+       title = "Aquatic Invert. Abundance Across Sites") +
+  theme_bw() +
+  # remove legend
+  theme(legend.position = 'none',
+        # fix x-axis for readability
+        axis.text.x = element_text(angle = 45, hjust = 1)) 
+
 ```
 
 ```{r}
