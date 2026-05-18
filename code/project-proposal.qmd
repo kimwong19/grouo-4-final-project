@@ -1,0 +1,570 @@
+---
+title: "project proposal"
+format: pdf
+execute: 
+  message: false
+  warning: false
+---
+
+# 1. Set up
+
+## Packages
+
+```{r}
+#| label: packages
+
+# general use and cleaning
+library(tidyverse)
+library(here)
+library(janitor)
+library(snakecase)
+
+# wrap axis labels
+library(scales)
+
+# read .xlsx files
+library(readxl)
+
+# visualize missing data
+library(naniar)
+
+# arrange plots
+library(patchwork)
+
+library(dplyr)     # data manipulation
+library(broom)     # tidy statistical output
+library(corrplot)
+
+```
+
+
+## Data
+
+```{r}
+#| label: data
+
+# taxonomic information
+taxon_list <- read_csv(here("data", "taxon_list.csv"))
+
+# aquatic invertebrates
+aq_ins <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
+                    sheet = "Aquatic Insects")
+
+
+# read in site information
+sites <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
+                   sheet = "sites")
+
+# read in water quality information
+water_quality <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
+                           sheet = "Water Quality",
+                           na = c("", "n/a", "N/A", "over", "173+")) 
+```
+
+# 2. Cleaning
+## `sites` object
+```{r}
+#| label: ncos-site-object
+
+# creating new object from sites
+ncos_sites <- sites |> 
+  # filter to only include NCOS sites sampled four times a year
+  filter(sector == "NCOS" & sampling_frequency == "Quarterly")
+```
+## Cleaning `taxon_list`
+```{r}
+#| label: cleaning-taxon-list
+
+# creating new clean object from taxon_list
+taxon_list_clean <- taxon_list |> 
+  # converting taxon name to snake case (no spaces or capital letters,
+  # only underscores)
+  mutate(verbatim_name = to_any_case(verbatim_name, case = "snake"))
+```
+## Cleaning `water_quality`
+```{r}
+#| label: water-quality-cleaning
+
+# creating new clean object from water quality
+water_quality_clean <- water_quality |> 
+  # clean column names
+  clean_names() |> 
+  # filtering join: only include sites in ncos_sites
+  semi_join(ncos_sites, by = "site") |> 
+  # create new column to join with later data frames
+  unite("date_site", date, site, remove = TRUE) |> 
+  # group by date_site column
+  group_by(date_site) |>
+  # calculate median pH, salinity, DO
+  summarize(med_ph = median(dissolved_oxygen_mg_l, na.rm = TRUE),
+            med_sal = median(salinity_ppt, na.rm = TRUE),
+            med_do = median(dissolved_oxygen_mg_l, na.rm = TRUE)) |> 
+  # ungroup data frame
+  ungroup() |> 
+  # filter out salinity outliers
+  filter(date_site != "2022-08-12_NVBR") 
+```
+
+## Cleaning `aq_ins`
+```{r}
+#| label: cleaning-aq-ins
+
+# creating new clean object from aquatic inverts
+aq_ins_clean <- aq_ins |> 
+  # clean column names
+  clean_names() |> 
+  # filtering join: only include sites occurring in ncos_sites
+  semi_join(ncos_sites, by = c("site")) |> 
+  # renaming columns
+  rename(date = date_on_vial) |> 
+  # select columns of interest
+  select(date, sample_type, site,
+         ostracod,
+         copepod,
+         hemiptera_corixidae_boatman,
+         cladocera,
+         nematode,
+         diptera_ceratopogonidae, 
+         annelida_oligochaete,
+         diptera_chironomid,
+         annelida_polychaete) |> 
+  # filter to only include "filtered beaker" samples
+  filter(sample_type %in% c("FB 250", "FB250")) |> 
+  # convert the data frame to long format
+  pivot_longer(cols = ostracod:annelida_polychaete,
+               names_to = "taxon",
+               values_to = "abundance") |> 
+  # group by date, site, taxon
+  group_by(date, site, taxon) |> 
+  # calculate average abundance per liter (sum abundance divided by 7.5 liters)
+  summarize(ave_lit = sum(abundance, na.rm = TRUE)/7.5) |> 
+  # ungroup data frame
+  ungroup() |> 
+  # create a new column called `date_site` to join with water quality
+  unite("date_site", date, site, remove = FALSE) |> 
+  # join with water quality
+  left_join(water_quality_clean, by = c("date_site")) |> 
+  # join with taxon list
+  left_join(taxon_list_clean, by = c("taxon" = "verbatim_name")) |> 
+  # add full names of sites
+  mutate(site_full = case_when(
+    site == "NVBR" ~ "North of Venoco Bridge",
+    site == "NEC" ~ "South of Venoco Bridge",
+    site == "NMC" ~ "Main Channel",
+    site == "NPB" ~ "South of Phelps Bridge",
+    site == "NPB1" ~ "North of Phelps Bridge",
+    site == "NPB2" ~ "Phelps Road",
+    site == "NWP" ~  "West Pond",
+    site == "NDC" ~ "Devereux Creek"
+  )) |> 
+  # setting factor levels for site
+  mutate(site_full = fct_reorder(site_full, med_do, .fun = "median", .na_rm = TRUE),
+         site_full = fct_rev(site_full))
+```
+
+## Focus Taxa
+```{r}
+#| label: focus_taxa
+# taxa to include in all figures
+focus_taxa <- c("Ostracod", "Copepod", "Cladocera", 
+                "Hemiptera Corixidae Boatman", "Nematode")
+```
+
+
+# Figure 1: Invertebrate abundance as a function of DO
+```{r}
+#| label: wrangle_data
+
+# create object DO_taxa from aq_ins_clean
+DO_taxa <- aq_ins_clean |> 
+  # remove rows that are missing median salinity values
+  filter(!is.na(med_do)) |> 
+  # create column that calculates log-transformed abundance
+  mutate(log_ave_lit = log(ave_lit + 1)) |>
+  # mutates to title-case taxon names
+  mutate(taxon = str_replace_all(taxon, "_", " "), taxon = str_to_title(taxon)) |>
+  # only include focus taxa
+  filter(taxon %in% focus_taxa) |> 
+  # order taxon levels by maximum average abundance per liter
+  mutate(taxon = fct_reorder(taxon, ave_lit, .fun = max, .desc = TRUE)) |> 
+  # keep only the columns needed for the figure
+  select(date, site, site_full, taxon, ave_lit, log_ave_lit, med_do)
+```
+
+```{r}
+#| label: DO_taxa_plot
+#| fig-width: 10
+#| fig-height: 8
+
+# base layer: ggplot
+DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot 
+                        # uses sal_taxa data frame
+                        mapping = aes(x = med_do, # x-axis: med_do
+                                      y = log_ave_lit, # y-axis: log_ave_lit
+                                      color = taxon)) + # color by taxon
+  # first layer: points show individual abundance measurements 
+  geom_point(shape = 16, # shape is circle
+             size = 2, # size is 2
+             alpha = 0.7) + # opacity is 0.7
+  # separate panels for each taxon with free x- and y-axis scales
+  facet_wrap(~ taxon, scales = "free") +
+  # use non-default colors for points
+  scale_color_viridis_d() +
+  labs(x = "Median DO (mg/L)", # relabel x-axis
+       y = "log + 1 transformed average abundance/L", # relabel y-axis
+       # creates descriptive title
+       title = "Invertebrate abundance as a function of DO") +
+  # uses non-default theme
+  theme_minimal() +
+  # remove redundant legend
+  theme(legend.position = "none")
+
+# shows plot
+DO_taxa_plot
+```
+shows that individual taxa have noisy, weak, or inconsistent relationships with DO.
+
+
+# Figure 2: Variance of DO across sights
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+# create object aq_ins_clean_fig2 from aq_ins_clean
+aq_ins_clean_fig2 <-  aq_ins_clean |>
+  # convert taxon to title case
+  mutate(taxon = str_replace_all(taxon, "_", " "),
+         taxon = str_to_title(taxon)) |> 
+  # filter to include focus taxa
+  filter(taxon %in% focus_taxa)
+
+# base layer
+DO <- ggplot(data = aq_ins_clean_fig2,
+       # x-axis: site
+       # y-axis: mean salinity
+       mapping = aes(x = site_full,
+                     y = med_do)) +
+  # first layer: boxplot
+  geom_boxplot(width = 0.35,
+               outlier.shape = NA) +
+  # second layer: salinity measurements at each survey
+  geom_jitter(height = 0,
+              width = 0.12,
+              shape = 21,
+              alpha = 0.6) +
+  # wrapping x-axis text
+  scale_x_discrete(labels = label_wrap(width = 15)) +
+  # second layer: points to represent means
+  stat_summary(fun = median,
+               color = "red",
+               size = 1) +
+  # relabelling x- and y-axes
+  labs(x = "Site",
+       y = "Median DO (mh/L)",
+       title = "Site DO levels") +
+  # different theme
+  theme_bw()
+# show plot
+DO
+```
+
+# Figure 3: Aquatic Invert. Abundance Across Sites
+```{r}
+#| label: cleanign for figure 3
+#| message: false
+#| warning: false
+# creating new object from clean aquatic inverts 
+abundance_by_site <- aq_ins_clean |> 
+  # log + 1 transform mean abundance per liter
+  mutate(log_ave_lit = log(ave_lit + 1)) |>
+  # convert taxon to title case
+  mutate(taxon = str_replace_all(taxon, "_", " "),
+         taxon = str_to_title(taxon)) |> 
+  # filter to include taxa of interest
+  filter(taxon %in% focus_taxa)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+# base layer
+
+abundance <- ggplot(data = abundance_by_site,
+                   # x-axis: site
+                   # y-axis: mean abundance/L
+                   # color by taxon
+                   mapping = aes(x = site_full,
+                                 y = log_ave_lit, 
+                                 color = taxon)) +
+  # first layer: jitter points to represent observations
+  geom_jitter(width = 0.15,
+              height = 0,
+              alpha = 0.7) +
+  # facet by taxon
+  facet_wrap(~ taxon) +
+  # wrapping x-axis text
+  scale_x_discrete(labels = label_wrap(15)) +
+  # non-default colors
+  scale_color_viridis_d() +
+  # relabelling x- and y-axis, adding title
+  labs(x = "Site",
+       y = "log + 1 transformed average abundance/L",
+       title = "Aquatic Invert. Abundance Across Sites") +
+  theme_bw() +
+  # remove legend
+  theme(legend.position = 'none',
+        # fix x-axis for readability
+        axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+abundance
+```
+# Figure 4: Abundance over time
+
+```{r}
+#| label: invert-abundance-time
+#| fig-width: 10
+#| fig-height: 8
+
+# create object for plotting total abundance over time
+abundance_time <- aq_ins_clean |> 
+  # group by sampling date and taxon
+  group_by(date, taxon) |> 
+  # total abundance across all sites for each date and taxon
+  summarize(total_ave_lit = sum(ave_lit, na.rm = TRUE)) |> 
+  # ungroup data frame
+  ungroup() |> 
+  # create log-transformed total abundance column
+  mutate(log_total_ave_lit = log(total_ave_lit + 1)) |> 
+  # make taxon names easier to read
+  mutate(taxon = str_replace_all(taxon, "_", " "),
+         taxon = str_to_title(taxon)) |> 
+  # order taxa by maximum total abundance
+  mutate(taxon = fct_reorder(taxon, total_ave_lit, .fun = max, .desc = TRUE)) |>
+  # include main taxon groups of focus
+  filter(taxon %in% focus_taxa) 
+
+
+# base layer
+abundance_time_plot <- ggplot(data = abundance_time,
+                              # x-axis: log_total_ave_lit
+                              # fill and color by taxon
+                              mapping = aes(x = log_total_ave_lit,
+                                            fill = taxon,
+                                            color = taxon)) +
+  # scaled density makes y-axis consistent across facets
+  geom_density(aes(y = after_stat(scaled)),
+               alpha = 0.45,
+               linewidth = 0.8,
+               adjust = 0.8) +
+  facet_wrap(~ taxon) + # facet by taxon
+  scale_fill_viridis_d() + # non-default colors
+  scale_color_viridis_d() + # non-default colors
+  labs(x = "log + 1 transformed total average abundance/L across sites",
+       y = "Scaled density",
+       title = "Distribution of total invertebrate abundance over time") +
+  # use clean theme
+  theme_bw() +
+  # remove redundant legend
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1))
+
+# show plot
+abundance_time_plot
+```
+
+# correlation analysis
+
+```{r}
+# create wide dataset (one column per taxon)
+taxa_wide <- DO_taxa |>
+  select(date, site, taxon, log_ave_lit, med_do) |>
+  pivot_wider(
+    names_from = taxon,
+    values_from = log_ave_lit
+  )
+
+# calculate correlation of each taxon with dissolved oxygen
+cor_do <- taxa_wide |>
+  select(-date, -site) |>
+  summarize(across(-med_do, ~ cor(.x, med_do, use = "complete.obs"))) |>
+  pivot_longer(
+    cols = everything(),
+    names_to = "taxon",
+    values_to = "correlation"
+  )
+
+ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
+  geom_tile(color = "grey70") +
+  geom_point(aes(size = abs(correlation)), shape = 21, fill = "white") +
+  
+  # move labels ABOVE circles
+  geom_text(aes(label = round(correlation, 2)),
+            nudge_y = 0.15,  # <-- this moves text up
+            size = 4) +
+  
+  scale_fill_gradient2(
+    low = "red",
+    mid = "white",
+    high = "blue",
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "r"
+  ) +
+  scale_size(range = c(2, 10), guide = "none") +
+  labs(
+    x = "Taxon",
+    y = NULL,
+    title = "Correlation between dissolved oxygen and invertebrate abundance"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+# Summed abundance across focus taxa vs DO
+```{r}
+focus_taxa <- c("Cladocera", "Copepod", 
+                "Hemiptera Corixidae Boatman", 
+                "Nematode", "Ostracod")
+
+total_abundance <- DO_taxa |>
+  filter(taxon %in% focus_taxa) |>
+  group_by(date, site, med_do) |>
+  summarize(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    log_total_abundance = log10(total_abundance + 1),
+    .groups = "drop"
+  )
+ggplot(total_abundance,
+       aes(x = med_do,
+           y = log_total_abundance)) +
+  
+  geom_point(color = "magenta3",
+             size = 3,
+             alpha = 0.7) +
+   geom_smooth(method = "lm",
+              se = TRUE,
+              color = "purple4",
+              fill = "cyan2") +
+  
+  labs(
+    x = "Dissolved oxygen (mg/L)",
+    y = "Log total invertebrate abundance",
+    title = "Relationship between dissolved oxygen and total invertebrate abundance"
+  ) +
+  
+  theme_classic()
+```
+When taxa are combined, a clearer negative relationship emerges.
+
+```{r}
+cor.test(
+  total_abundance$log_total_abundance,
+  total_abundance$med_do,
+  method = "pearson"
+)
+```
+
+# Binned DO levels
+```{r}
+total_abundance <- total_abundance |>
+  mutate(
+    do_category = case_when(
+      med_do <= quantile(med_do, 0.33, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.66, na.rm = TRUE) ~ "Medium DO",
+      TRUE ~ "High DO"
+    )
+  )
+total_abundance$do_category <- factor(
+  total_abundance$do_category,
+  levels = c("Low DO", "Medium DO", "High DO")
+)
+
+ggplot(total_abundance,
+       aes(x = do_category,
+           y = log_total_abundance,
+           fill = do_category)) +
+  
+  geom_boxplot(alpha = 0.7,
+               outlier.color = "black",
+               outlier.size = 2) +
+  
+  # optional: add jittered points to show raw data
+  geom_jitter(width = 0.15,
+              alpha = 0.5,
+              size = 2,
+              color = "black") +
+  
+  labs(
+    x = "Dissolved oxygen level",
+    y = "Log total invertebrate abundance",
+    title = "Invertebrate abundance across dissolved oxygen levels"
+  ) +
+  
+  scale_fill_manual(values = c(
+    "Low DO" = "red3",
+    "Medium DO" = "grey60",
+    "High DO" = "blue3"
+  )) +
+  
+  theme_classic() +
+  theme(legend.position = "none")
+```
+Community abundance varies continuously rather than discretely across DO levels.
+
+```{r}
+# Pearson correlation for continuous DO and total community abundance
+cor.test(total_abundance$log_total_abundance,
+         total_abundance$med_do,
+         method = "pearson")
+
+# Kruskal-Wallis test comparing abundance across DO categories
+kruskal.test(log_total_abundance ~ do_category,
+             data = total_abundance)
+```
+
+
+```{r}
+composition_plot <- DO_taxa |>
+  mutate(
+    do_category = case_when(
+      med_do <= quantile(med_do, 0.33, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.66, na.rm = TRUE) ~ "Medium DO",
+      TRUE ~ "High DO"
+    ),
+
+    # reorder factor levels
+    do_category = factor(do_category,
+                         levels = c("Low DO",
+                                    "Medium DO",
+                                    "High DO"))
+  ) |>
+  group_by(do_category, taxon) |>
+  summarize(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = do_category,
+             y = total_abundance,
+             fill = taxon)) +
+
+  geom_col(position = "fill") +
+
+  scale_y_continuous(labels = scales::percent_format()) +
+
+  labs(
+    x = "Dissolved oxygen category",
+    y = "Relative community composition",
+    fill = "Taxon",
+    title = "Invertebrate community composition shifts across dissolved oxygen levels"
+  ) +
+
+  theme_classic()
+
+composition_plot
+```
+
+Medium DO sites show a more even distribution of taxa and greater relative abundance of Cladocera and Ostracods, while low and high DO conditions are dominated primarily by Copepods.
+
