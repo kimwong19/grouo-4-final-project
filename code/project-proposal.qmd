@@ -885,6 +885,7 @@ chisq.test(copepods_matrix)
 # Proportion of Copepod abundance changes across DO levels.
 pairwise_copepods <- pairwise.prop.test(copepods_matrix, p.adjust.method = "bonferroni")
 pairwise_copepods
+# Significant difference between Low & High, Moderate & High
 
 ostracods_matrix <- matrix(c(592.666667,679.599963, 211.466667,2893.600033, 153.733333,28.800037), nrow = 3, ncol = 2, byrow = TRUE,
                       dimnames = list(Oxygen = c("Low", "Moderate", "High"),
@@ -895,6 +896,7 @@ chisq.test(ostracods_matrix)
 # Proportion of Ostracod abundance changes across DO levels.
 pairwise_ostracods <- pairwise.prop.test(ostracods_matrix, p.adjust.method = "bonferroni")
 pairwise_ostracods
+# Significant difference between all pairs of DO levels.
 
 cladocera_matrix <- matrix(c(509.333333,762.933333, 688.400000,2417.06667, 10.000000,155.066666), nrow = 3, ncol = 2, byrow = TRUE,
                       dimnames = list(Oxygen = c("Low", "Moderate", "High"),
@@ -905,6 +907,7 @@ chisq.test(cladocera_matrix)
 # Proportion of Cladocera abundance changes across DO levels.
 pairwise_cladocera <- pairwise.prop.test(cladocera_matrix, p.adjust.method = "bonferroni")
 pairwise_cladocera
+# Significant difference between all pairs of DO levels.
 
 boatman_matrix <- matrix(c(10.133333,1262.133333, 50.000000,3055.466667, 1.333333,181.2), nrow = 3, ncol = 2, byrow = TRUE,
                       dimnames = list(Oxygen = c("Low", "Moderate", "High"),
@@ -916,7 +919,7 @@ chisq.test(boatman_matrix)
 
 ```
 
-When comparing medians of taxon abundance across DO bins, only Ostracod abundance is significantly different between the moderate and high DO bins. When comparing proportions of taxon abundnace across DO bins, the proportions of Copepods, Ostracods, and Cladocera significantly differ across the different DO bins. 
+When comparing medians of taxon abundance across DO bins, only Ostracod abundance is significantly different between the moderate and high DO bins. When comparing proportions of taxon abundnace across DO bins, the proportions of Copepods, Ostracods, and Cladocera significantly differ across the different DO bins. For Copepods, the differences exist between Low & High and Moderate & High DO levels. For Ostracods and Cladocera, the differences exist between all pairings of DO levels. 
 
 
 
