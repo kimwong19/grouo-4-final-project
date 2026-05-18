@@ -1,2 +1,2 @@
-# grouo-4-final-project
+# group-4-final-project
 final project
