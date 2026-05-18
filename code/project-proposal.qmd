@@ -825,6 +825,7 @@ kruskal.test(log_ave_lit ~ bins,
              data = aq_ins_clean_bins,
              subset = taxon == "Ostracod") # Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
                                            # significant difference of abundance btwn DO level bins
+                                    
 
 # Pairwise test between abundance and individual bins for Ostracods
 bins_ostracods <- aq_ins_clean_bins |> 
@@ -836,8 +837,86 @@ pairwise.wilcox.test(
 ```
 From this figure and the medians, it looks like Copepods and Ostracods prefer moderate levels of DO. The others don't appear to have a preference, but nematode abundance is especially low throughout so there might just not be enough to tell for that taxon. Only Ostracod abundance medians for each DO level bin significantly differ according to a Kruskal-Wallis test. A pairwise comparison using Wilcoxon rank sum test found that abundance compared between moderate and high levels of DO for Ostracods has a p-value of 0.051. Otherwise, pairwise comparisons are not significant (p>0.1).
 
+```{r}
+#| label: comparing-abundance-proportions-across-DO-levels
 
 
+# Made a copy of the composition plot but changed the bins to match the 4 quartiles of the distribution plot
+composition_plot_1 <- DO_taxa |>
+  mutate(
+    do_category = case_when(
+      med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
+      TRUE ~ "High DO"
+    ),
+    do_category = factor(do_category,
+                         levels = c("Low DO",
+                                    "Medium DO",
+                                    "High DO"))
+  ) |>
+  group_by(do_category, taxon) |>
+  summarize(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = do_category,
+             y = total_abundance,
+             fill = taxon)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    x = "Dissolved oxygen category",
+    y = "Relative community composition",
+    fill = "Taxon",
+    title = "Invertebrate community composition shifts across dissolved oxygen levels"
+  ) +
+  theme_classic()
+
+# display plot
+composition_plot_1
+
+# running chi-square tests to compare proportional abundance across DO levels
+copepods_matrix <- matrix(c(160.133333,1112.133333, 2155.200000,949.866667, 17.466667,165.066666), nrow = 3, ncol = 2, byrow = TRUE,
+                      dimnames = list(Oxygen = c("Low", "Moderate", "High"),
+                                      Taxa = c("Copepod", "Other")))
+view(copepods_matrix)
+chisq.test(copepods_matrix)
+# X-squared = 1297.8, df = 2, p-value < 2.2e-16
+# Proportion of Copepod abundance changes across DO levels.
+pairwise_copepods <- pairwise.prop.test(copepods_matrix, p.adjust.method = "bonferroni")
+pairwise_copepods
+
+ostracods_matrix <- matrix(c(592.666667,679.599963, 211.466667,2893.600033, 153.733333,28.800037), nrow = 3, ncol = 2, byrow = TRUE,
+                      dimnames = list(Oxygen = c("Low", "Moderate", "High"),
+                                      Taxa = c("Copepod", "Other")))
+view(ostracods_matrix)
+chisq.test(ostracods_matrix)
+# X-squared = 1318.3, df = 2, p-value < 2.2e-16
+# Proportion of Ostracod abundance changes across DO levels.
+pairwise_ostracods <- pairwise.prop.test(ostracods_matrix, p.adjust.method = "bonferroni")
+pairwise_ostracods
+
+cladocera_matrix <- matrix(c(509.333333,762.933333, 688.400000,2417.06667, 10.000000,155.066666), nrow = 3, ncol = 2, byrow = TRUE,
+                      dimnames = list(Oxygen = c("Low", "Moderate", "High"),
+                                      Taxa = c("Copepod", "Other")))
+view(cladocera_matrix)
+chisq.test(cladocera_matrix)
+# X-squared = 184.58, df = 2, p-value < 2.2e-16
+# Proportion of Cladocera abundance changes across DO levels.
+pairwise_cladocera <- pairwise.prop.test(cladocera_matrix, p.adjust.method = "bonferroni")
+pairwise_cladocera
+
+boatman_matrix <- matrix(c(10.133333,1262.133333, 50.000000,3055.466667, 1.333333,181.2), nrow = 3, ncol = 2, byrow = TRUE,
+                      dimnames = list(Oxygen = c("Low", "Moderate", "High"),
+                                      Taxa = c("Copepod", "Other")))
+view(boatman_matrix)
+chisq.test(boatman_matrix)
+# X-squared = 5.0378, df = 2, p-value = 0.08055
+# Proportion of Boatman abundance does not change across DO levels.
+
+```
+
+When comparing medians of taxon abundance across DO bins, only Ostracod abundance is significantly different between the moderate and high DO bins. When comparing proportions of taxon abundnace across DO bins, the proportions of Copepods, Ostracods, and Cladocera significantly differ across the different DO bins. 
 
 
 
