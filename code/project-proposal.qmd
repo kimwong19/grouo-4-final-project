@@ -568,3 +568,47 @@ composition_plot
 
 Medium DO sites show a more even distribution of taxa and greater relative abundance of Cladocera and Ostracods, while low and high DO conditions are dominated primarily by Copepods.
 
+# area plot
+```{r}
+# species/taxa to include in the total abundance figure
+species_interest <- c(
+  "Ostracod",
+  "Copepod",
+  "Cladocera",
+  "Hemiptera Corixidae Boatman",
+  "Nematode"
+)
+
+# create total abundance over time
+total_abundance_time <- DO_taxa |>
+  # keeps only the taxa of interest
+  filter(taxon %in% species_interest) |>
+  # makes sure date is treated as a date
+  mutate(date = as.Date(date)) |>
+  # groups by date only, so abundance is summed across sites and taxa
+  group_by(date) |>
+  # sums average abundance per liter across all taxa of interest
+  summarise(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# plot total abundance over time
+ggplot(total_abundance_time, aes(x = date, y = total_abundance)) +
+  # adds a line connecting total abundance values over time
+  geom_line(linewidth = 1) +
+  # adds points for each sampling date
+  geom_point(size = 2) +
+  # formats y-axis labels with commas
+  scale_y_continuous(labels = scales::comma) +
+  # adds clear labels
+  labs(
+    title = "Total Abundance of Species of Interest Over Time",
+    x = "Sampling Date",
+    y = "Total Abundance"
+  ) +
+  # uses a clean theme
+  theme_minimal()
+```
+
+
