@@ -814,9 +814,11 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins,
                                       y = log_ave_lit, # y-axis: log_ave_lit
                                       color = taxon)) + # color by taxon
   # first layer: points show individual abundance measurements 
-  geom_point(shape = 16, # shape is circle
-             size = 2, # size is 2
-             alpha = 0.7) + # opacity is 0.7
+  geom_jitter(width = 0.15,
+            height = 0,
+            shape = 16,
+            size = 2,
+            alpha = 0.7) +
   # calculate median for each bin for each taxon
   stat_summary(fun = median,
                geom = "point",
