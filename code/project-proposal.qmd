@@ -529,6 +529,82 @@ ggplot(total_abundance,
   
   theme_classic()
 ```
+
+```{r}
+# Summed abundance across focus taxa vs DO
+focus_taxa <- c("Cladocera", "Copepod", 
+                "Hemiptera Corixidae Boatman", 
+                "Nematode", "Ostracod")
+
+total_abundance <- DO_taxa |>
+  filter(taxon %in% focus_taxa) |>
+  group_by(date, site, med_do) |>
+  summarize(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(log_total_abundance = log10(total_abundance + 1))
+
+# fit linear model
+total_abundance_lm <- lm(log_total_abundance ~ med_do,
+                         data = total_abundance)
+
+# create new data frame for predicted values
+total_abundance_predictions <- data.frame(
+  med_do = seq(min(total_abundance$med_do, na.rm = TRUE),
+               max(total_abundance$med_do, na.rm = TRUE),
+               length.out = 100)
+)
+
+# generate predicted values and confidence intervals
+total_abundance_predictions <- total_abundance_predictions |>
+  bind_cols(
+    predict(total_abundance_lm,
+            newdata = total_abundance_predictions,
+            interval = "confidence") |>
+      as.data.frame()
+  )
+
+# plot raw data and model predictions
+ggplot(total_abundance,
+       aes(x = med_do,
+           y = log_total_abundance)) +
+  
+  # raw data points
+  geom_point(color = "magenta3",
+             size = 3,
+             alpha = 0.7) +
+  
+  # confidence interval around model predictions
+  geom_ribbon(data = total_abundance_predictions,
+              aes(x = med_do,
+                  ymin = lwr,
+                  ymax = upr),
+              inherit.aes = FALSE,
+              fill = "cyan2",
+              alpha = 0.35) +
+  
+  # predicted line from linear model
+  geom_line(data = total_abundance_predictions,
+            aes(x = med_do,
+                y = fit),
+            inherit.aes = FALSE,
+            color = "purple4",
+            linewidth = 1) +
+  
+  labs(
+    x = "Dissolved oxygen (mg/L)",
+    y = "Log total invertebrate abundance",
+    title = "Relationship between dissolved oxygen and total invertebrate abundance"
+  ) +
+  
+  theme_classic()
+```
+```{r}
+broom::tidy(total_abundance_lm)
+```
+
+
 When taxa are combined, a clearer negative relationship emerges.
 
 ```{r}
