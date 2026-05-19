@@ -309,12 +309,6 @@ abundance <- ggplot(data = abundance_by_site,
   geom_jitter(width = 0.15,
               height = 0,
               alpha = 0.7) +
-  # add median point for each site within each taxon
-  stat_summary(fun = median,
-               geom = "point",
-               shape = 18,
-               size = 3,
-               color = "black") +
   # facet by taxon
   facet_wrap(~ taxon) +
   # wrapping x-axis text
@@ -982,6 +976,6 @@ chi_square_test <- chisq.test(chi_square_table)
 chi_square_test
 
 ```
-The chi-square test suggests that taxon composition differs strongly across DO bins: the relative abundance of Cladocera, Copepod, Boatman, Nematode, and Ostracod is not evenly distributed across low, moderate, and high DO groups, X² = 2859.2, df = 8, p < 2.2e-16
+A chi-square test was used to compare whether the proportional composition of the focus taxa differed across low, moderate, and high DO bins. The chi-square test suggests that taxon composition differs strongly across DO bins: the relative abundance of Cladocera, Copepod, Boatman, Nematode, and Ostracod is not evenly distributed across low, moderate, and high DO groups, X² = 2859.2, df = 8, p < 2.2e-16
 
 
