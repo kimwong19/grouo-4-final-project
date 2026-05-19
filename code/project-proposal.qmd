@@ -434,14 +434,16 @@ taxa_wide <- DO_taxa |>
   )
 
 # calculate correlation of each taxon with dissolved oxygen
+# calculate Spearman correlation of each taxon with dissolved oxygen
 cor_do <- taxa_wide |>
   select(-date, -site) |>
-  summarize(across(-med_do, ~ cor(.x, med_do, use = "complete.obs"))) |>
-  pivot_longer(
-    cols = everything(),
-    names_to = "taxon",
-    values_to = "correlation"
-  )
+  summarize(across(-med_do, ~ cor(.x,
+                                  med_do,
+                                  method = "spearman",
+                                  use = "complete.obs"))) |>
+  pivot_longer(cols = everything(),
+               names_to = "taxon",
+               values_to = "correlation")
 
 ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
   geom_tile(color = "grey70") +
@@ -464,7 +466,7 @@ ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
   labs(
     x = "Taxon",
     y = NULL,
-    title = "Correlation between dissolved oxygen and invertebrate abundance"
+    title = "Spearman correlation between dissolved oxygen and invertebrate abundance"
   ) +
   theme_minimal() +
   theme(
@@ -473,6 +475,32 @@ ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
   )
 
 ```
+
+```{r}
+# Spearman correlation between DO and abundance for each taxon
+spearman_by_taxon <- DO_taxa |>
+  # keep only species of interest
+  filter(taxon %in% focus_taxa) |>
+  # group by taxon so each species gets its own test
+  group_by(taxon) |>
+  # run Spearman correlation test for each taxon
+  summarise(
+    spearman_rho = cor(log_ave_lit,
+                       med_do,
+                       method = "spearman",
+                       use = "complete.obs"),
+    p_value = cor.test(log_ave_lit,
+                       med_do,
+                       method = "spearman",
+                       exact = FALSE)$p.value,
+    n = sum(complete.cases(log_ave_lit, med_do)),
+    .groups = "drop"
+  )
+
+# show results
+spearman_by_taxon
+```
+
 # Summed abundance across focus taxa vs DO
 ```{r}
 focus_taxa <- c("Cladocera", "Copepod", 
@@ -513,8 +541,9 @@ When taxa are combined, a clearer negative relationship emerges.
 cor.test(
   total_abundance$log_total_abundance,
   total_abundance$med_do,
-  method = "pearson"
-)
+  method = "spearman",
+  exact = FALSE)
+
 ```
 
 # Binned DO levels
@@ -578,6 +607,7 @@ kruskal.test(log_total_abundance ~ do_category,
 # Kruskal-Wallis chi-squared = 3.2212, df = 2, p-value = 0.1998
 # there is not a significant difference between abundance and DO categories
 ```
+
 
 # Composition plot across DO bins
 ```{r}
@@ -922,8 +952,36 @@ chisq.test(boatman_matrix)
 When comparing medians of taxon abundance across DO bins, only Ostracod abundance is significantly different between the moderate and high DO bins. When comparing proportions of taxon abundnace across DO bins, the proportions of Copepods, Ostracods, and Cladocera significantly differ across the different DO bins. For Copepods, the differences exist between Low & High and Moderate & High DO levels. For Ostracods and Cladocera, the differences exist between all pairings of DO levels. 
 
 
+## Chi-square
 
 
+```{r}
+# create abundance table for chi-square test
+chi_square_table <- aq_ins_clean_bins |>
+  filter(taxon %in% focus_taxa) |>
+  group_by(bins, taxon) |>
+  summarise(
+    total_abundance = sum(ave_lit, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  pivot_wider(
+    names_from = taxon,
+    values_from = total_abundance,
+    values_fill = 0
+  ) |>
+  column_to_rownames("bins") |>
+  as.matrix()
 
+# show table used in chi-square test
+chi_square_table
+
+# chi-square test for differences in taxon composition across DO bins
+chi_square_test <- chisq.test(chi_square_table)
+
+# show chi-square result
+chi_square_test
+
+```
+The chi-square test suggests that taxon composition differs strongly across DO bins: the relative abundance of Cladocera, Copepod, Boatman, Nematode, and Ostracod is not evenly distributed across low, moderate, and high DO groups, X² = 2859.2, df = 8, p < 2.2e-16
 
 
