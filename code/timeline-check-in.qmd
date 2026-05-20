@@ -237,6 +237,8 @@ cor.test(
   method = "spearman",
   exact = FALSE)
 ```
+Total log-transformed invertebrate abundance had a **weak negative** relationship with dissolved oxygen, but this relationship was not statistically significant using Spearman correlation.
+
 ## Correlation analysis for Each Focus Taxa and DO levels
 ```{r}
 #| fig-width: 10
@@ -291,6 +293,8 @@ ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
   )
 
 ```
+Most focus taxa showed **weak negative** correlations with dissolved oxygen, with Cladocera and Copepod showing the strongest negative relationships and Nematode showing almost no relationship.
+
 ## Pearson correlation for continuous DO and total community abundance
 ```{r}
 # Pearson correlation for continuous DO and total community abundance
@@ -300,6 +304,8 @@ cor.test(total_abundance$log_total_abundance,
 # r = -0.3749894, p = 0.02887
 # there is a significant negative correlation between abundance and continous DO
 ```
+There was a **statistically significant negative linear relationship** between median dissolved oxygen and log-transformed total invertebrate abundance, suggesting that abundance decreased as DO increased.
+
 ## Kruskal-Wallis test comparing abundance across DO categories
 ```{r}
 kruskal.test(log_total_abundance ~ do_category,
@@ -307,6 +313,8 @@ kruskal.test(log_total_abundance ~ do_category,
 # Kruskal-Wallis chi-squared = 3.2212, df = 2, p-value = 0.1998
 # there is not a significant difference between abundance and DO categories
 ```
+Total log-transformed invertebrate abundance **did not differ significantly** across low, moderate, and high DO categories.
+
 ## Kruskal-Wallis test between abundance and bins for Copepods
 ```{r}
 kruskal.test(log_ave_lit ~ bins,
@@ -314,13 +322,17 @@ kruskal.test(log_ave_lit ~ bins,
              subset = taxon == "Copepod") # Kruskal-Wallis chi-squared = 4.405, df = 2, p-value = 0.1105
                                           # no significant difference
 ```
+Copepod abundance **did not differ significantly across DO bins**, suggesting DO category was not a strong predictor of Copepod abundance.
+
 ## Kruskal-Wallis test between abundance and bins for Ostracods
 ```{r}
 kruskal.test(log_ave_lit ~ bins,
              data = aq_ins_clean_bins,
              subset = taxon == "Ostracod") # Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
                                            # significant difference of abundance btwn DO level bins
-```                                    
+```
+Ostracod abundance **differed significantly across DO bins**, indicating that Ostracods may respond differently to low, moderate, and high DO conditions.
+
 ## Pairwise test between abundance and individual bins for Ostracods
 ```{r}
 bins_ostracods <- aq_ins_clean_bins |> 
@@ -330,6 +342,7 @@ pairwise.wilcox.test(
   bins_ostracods$bins,
   p.adjust.method = "bonferroni") # p = 0.051 for comparison btwn moderate and high DO level bins
 ```
+After Bonferroni correction, the moderate vs. high DO comparison was close to significant, suggesting a possible difference in Ostracod abundance between these bins but not strong enough to conclude significance at $\alpha$ = 0.05.
 
 ## Chi-Square
 ```{r}
@@ -358,6 +371,7 @@ chi_square_test <- chisq.test(chi_square_table)
 # show chi-square result
 chi_square_test
 ```
+Taxon composition **differed significantly across DO bins**, suggesting that the invertebrate community structure changes depending on dissolved oxygen category.
 
 # Visualizations directly relevant to answering questions
 ## Directly Relevant Figure 1: DO levels vs invert. abundance for each focus taxa
