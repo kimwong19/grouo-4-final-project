@@ -32,6 +32,7 @@ library(patchwork)
 library(dplyr)     # data manipulation
 library(broom)     # tidy statistical output
 library(corrplot)
+library(ggrepel)
 
 ```
 
@@ -311,15 +312,17 @@ kruskal.test(log_total_abundance ~ do_category,
 ```{r}
 kruskal.test(log_ave_lit ~ bins,
              data = aq_ins_clean_bins,
-             subset = taxon == "Copepod") # Kruskal-Wallis chi-squared = 4.405, df = 2, p-value = 0.1105
-                                          # no significant difference
+             subset = taxon == "Copepod") 
+# Kruskal-Wallis chi-squared = 4.405, df = 2, p-value = 0.1105
+# no significant difference
 ```
 ## Kruskal-Wallis test between abundance and bins for Ostracods
 ```{r}
 kruskal.test(log_ave_lit ~ bins,
              data = aq_ins_clean_bins,
-             subset = taxon == "Ostracod") # Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
-                                           # significant difference of abundance btwn DO level bins
+             subset = taxon == "Ostracod") 
+# Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
+# significant difference of abundance btwn DO level bins
 ```                                    
 ## Pairwise test between abundance and individual bins for Ostracods
 ```{r}
@@ -328,7 +331,8 @@ bins_ostracods <- aq_ins_clean_bins |>
 pairwise.wilcox.test(
   bins_ostracods$log_ave_lit,
   bins_ostracods$bins,
-  p.adjust.method = "bonferroni") # p = 0.051 for comparison btwn moderate and high DO level bins
+  p.adjust.method = "bonferroni") 
+# p = 0.051 for comparison btwn moderate and high DO level bins
 ```
 
 ## Chi-Square
@@ -348,6 +352,8 @@ chi_square_table <- aq_ins_clean_bins |>
   ) |>
   column_to_rownames("bins") |>
   as.matrix()
+
+view(chi_square_table)
 
 # show table used in chi-square test
 chi_square_table
@@ -582,12 +588,10 @@ DO
 composition_plot <- DO_taxa |>
   mutate(
     do_category = case_when(
-      med_do <= quantile(med_do, 0.33, na.rm = TRUE) ~ "Low DO",
-      med_do <= quantile(med_do, 0.66, na.rm = TRUE) ~ "Medium DO",
+      med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
       TRUE ~ "High DO"
     ),
-
-    # reorder factor levels
     do_category = factor(do_category,
                          levels = c("Low DO",
                                     "Medium DO",
@@ -601,20 +605,17 @@ composition_plot <- DO_taxa |>
   ggplot(aes(x = do_category,
              y = total_abundance,
              fill = taxon)) +
-
   geom_col(position = "fill") +
-
   scale_y_continuous(labels = scales::percent_format()) +
-
   labs(
     x = "Dissolved oxygen category",
     y = "Relative community composition",
     fill = "Taxon",
     title = "Invertebrate community composition shifts across dissolved oxygen levels"
   ) +
-
   theme_classic()
 
+# display plot
 composition_plot
 ```
 ## Exploratory Figure 3: Time-series plot of total abundance (all species)
@@ -700,7 +701,67 @@ ggplot(taxon_abundance_time, aes(x = date, y = ave_lit, fill = taxon)) +
   # uses a clean theme
   theme_minimal()
 ```
-## Exploratory Figure 5: NEED TO ADD UPDATED FIGRUE HERE: Distribution of Median Dissolved Oxygen Aross Sites
+## Exploratory Figure 5: Distribution of Median Dissolved Oxygen Aross Sites
+```{r}
+#| label: do-vs-sites-bins
+#| fig-width: 10
+#| fig-height: 8
+
+# create new object to store medians of median do levels
+median_fig2 <- aq_ins_clean_fig2 |> 
+  group_by(site_full) |> 
+  summarize(median_do = median(med_do, na.rm = TRUE))
+
+# assign quartiles for medians for each site
+median_fig2$quartile <- cut(
+  median_fig2$median_do, 
+  breaks = quantile(median_fig2$median_do, probs = seq(0, 1, 0.25)), 
+  labels = c("Q1", "Q2", "Q3", "Q4"), 
+  include.lowest = TRUE,
+  right = FALSE)
+
+# boundaries of quartiles
+q <- quantile(median_fig2$median_do, probs = seq(0, 1, 0.25))
+
+# distribution plot of DO levels across sites
+ggplot(median_fig2, aes(x = median_do)) +
+  # density curve
+  geom_density(fill = "lightblue",
+               alpha = 0.4,
+               color = "blue",
+               linewidth = 1.2) +
+  # vertical quartile lines
+  geom_vline(xintercept = q,
+             linetype = "dashed",
+             color = "gray40") +
+  # site labels
+  geom_text_repel(aes(y = 0.01,
+                      label = str_wrap(site_full, width = 10)),
+                  size = 3,
+                  box.padding = 0.5,       # space around the text box
+                  show.legend = FALSE) +
+  # quartile dashed line labels
+  geom_text(data = data.frame(x = q, label = names(q)), 
+            aes(x = x, y = 0.14, label = paste0(label, "\n", round(x, 2))),
+            color = "gray40",
+            size = 3.5,
+            hjust = -0.1) + # shift text slightly to the right of the line
+  # remove space between bottom of plot and y-axis, set y-axis limits
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(0, 0.15)) +
+  # axes labels and title
+  labs(x = "Median Dissolved Oxygen (mg/L)",
+       y = "Density",
+       title = "Distribution of Median Dissolved Oxygen Aross Sites") +
+  # theme
+  theme_bw() +
+  theme(legend.position = "none")
+```
+These bins were created by taking the median value of the median dissolved oxygen levels at each site. Low DO is the 25th percentile, moderate DO is the 75th percentile, and high DO is the 100th percentile.
+
+- Low DO: Phelps Road and North of Phelps Bridge
+- Moderate DO: South of Venoco Bridge, South of Phelps Bridge, Devereux Creek
+- High DO: North of Venoco Bridge, Main Channel
 
 ## Exploratory Figure 6: Invertebrate Abundance in DO Bins
 ```{r}

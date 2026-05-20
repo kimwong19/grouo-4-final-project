@@ -933,17 +933,18 @@ kruskal.test(log_ave_lit ~ bins,
 # Kruskal-Wallis test between abundance and bins for Ostracods
 kruskal.test(log_ave_lit ~ bins,
              data = aq_ins_clean_bins,
-             subset = taxon == "Ostracod") # Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
-                                           # significant difference of abundance btwn DO level bins
+             subset = taxon == "Ostracod") 
+# Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
+# significant difference of abundance btwn DO level bins
                                     
-
 # Pairwise test between abundance and individual bins for Ostracods
 bins_ostracods <- aq_ins_clean_bins |> 
   filter(taxon == "Ostracod")
 pairwise.wilcox.test(
   bins_ostracods$log_ave_lit,
   bins_ostracods$bins,
-  p.adjust.method = "bonferroni") # p = 0.051 for comparison btwn moderate and high DO level bins
+  p.adjust.method = "bonferroni") 
+# p = 0.051 for comparison btwn moderate and high DO level bins
 ```
 From this figure and the medians, it looks like Copepods and Ostracods prefer moderate levels of DO. The others don't appear to have a preference, but nematode abundance is especially low throughout so there might just not be enough to tell for that taxon. Only Ostracod abundance medians for each DO level bin significantly differ according to a Kruskal-Wallis test. A pairwise comparison using Wilcoxon rank sum test found that abundance compared between moderate and high levels of DO for Ostracods has a p-value of 0.051. Otherwise, pairwise comparisons are not significant (p>0.1).
 
