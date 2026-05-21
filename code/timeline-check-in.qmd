@@ -210,8 +210,8 @@ total_abundance <- DO_taxa |>
 total_abundance <- total_abundance |>
   mutate(
     do_category = case_when(
-      med_do <= quantile(med_do, 0.33, na.rm = TRUE) ~ "Low DO",
-      med_do <= quantile(med_do, 0.66, na.rm = TRUE) ~ "Medium DO",
+      med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
       TRUE ~ "High DO"
     )
   )
@@ -512,8 +512,8 @@ broom::tidy(total_abundance_lm)
 total_abundance <- total_abundance |>
   mutate(
     do_category = case_when(
-      med_do <= quantile(med_do, 0.33, na.rm = TRUE) ~ "Low DO",
-      med_do <= quantile(med_do, 0.66, na.rm = TRUE) ~ "Medium DO",
+      med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
       TRUE ~ "High DO"
     )
   )
