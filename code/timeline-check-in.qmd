@@ -836,3 +836,28 @@ ins_bins_plot
 # Plan for elective (if completing)
 - should include some description/image of drafts
 - should include plan for making progress in the next two weeks
+
+Elective idea: add microscopic images of each of the 5 main inverts 
+
+Water color bubbles/ blow colored bubbles with watercolor around each to demonstrate how much dissolved oxygen each likes 
+
+- More bubbles = likes more DO
+
+- Less bubbles = likes less DO
+
+```{r}
+#| echo: false
+#| out-width: "70%"
+
+knitr::include_graphics(here("code", "draft_elective.png"))
+```
+ 
+```{r}
+#| echo: false
+#| out-width: "30%"
+knitr::include_graphics(here("code", "elective_images.png"))
+```
+
+Plan for next 2 weeks:
+
+NEED TO ADD
