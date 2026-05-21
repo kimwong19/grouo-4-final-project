@@ -228,7 +228,19 @@ total_abundance$do_category <- factor(
 
 ## Citations:
 
+**Poster**: Algae, Macroinvertebrate and Water Quality Relationships at North Campus Open Space - [link](https://escholarship.org/uc/item/98b837q4)
+
+**Background Articles**
+
+Connolly, N. M., Crossland, M. R., & Pearson, R. G. (2004). _Effect of low dissolved oxygen on survival, emergence, and drift of tropical stream macroinvertebrates_. BioOne Complete (BioOne). [https://doi.org/10.1899/0887-3593(2004)023%3C0251:eoldoo%3E2.0.co;2](https://doi.org/10.1899/0887-3593(2004)023%3C0251:eoldoo%3E2.0.co;2)
+
+Gunsch, D. E. (2020, November 5). _Community Composition of Aquatic Invertebrates along Dissolved Oxygen Gradients in Lake Huron Coastal Wetland Wet Meadows_. Handle.net. [https://hdl.handle.net/20.500.14776/9073](https://hdl.handle.net/20.500.14776/9073)
+
+Suren, A. M., Lambert, P., & Sorrell, B. K. (2010). _The Impact of Hydrological Restoration on Benthic Aquatic Invertebrate Communities in a New Zealand Wetland_. Restoration Ecology, 19(6), 747–757. [https://doi.org/10.1111/j.1526-100x.2010.00723.x](https://doi.org/10.1111/j.1526-100x.2010.00723.x)
+
+
 NEED TO ADD
+
 
 ## Spearman Correlation Analysis for Total Abundance and DO levels
 ```{r}
