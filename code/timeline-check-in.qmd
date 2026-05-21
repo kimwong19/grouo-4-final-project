@@ -223,8 +223,19 @@ total_abundance$do_category <- factor(
 
 # Ideas for analysis and background
 
-- should include some citations (not all)
-- should include ideas for analyses to answer questions and some preliminary code to run those analyses
+## Ideas for analysis: 
+
+Our first big idea is looking at total invertebrate abundance compared to median dissolved oxygen levels. We ran a correlation test and found that there was a statistically significant negative linear relationship between median dissolved oxygen and log-transformed total invertebrate abundance, suggesting that abundance decreased as DO increased. 
+
+We also explored how dissolved oxygen levels differ between sites, and then categorized sites into low, moderate, and high DO bins. We found that total log-transformed invertebrate abundance did not differ significantly across low, moderate, and high DO bins. However, Ostracod abundance differed significantly across DO bins, indicating that Ostracods may respond differently to low, moderate, and high DO conditions. After Bonferroni correction, the moderate vs. high DO comparison was close to significant,
+suggesting a possible difference in Ostracod abundance between these bins but not strong
+enough to conclude significance at 𝛼 = 0.05. 
+
+Another way we compared taxa in bins was by running a Chi-square test on taxon composition within each DO bin. We found that taxon composition differed significantly across DO bins, suggesting that the invertebrate community structure changes depending on dissolved oxygen category. Next, we'd like to perform post-hoc tests to see which groups differ from one another.
+
+## Background:
+
+North Campus Open Space is a restored wetland, which makes it a great area to explore data about the effects of restoration. One metric of restoration progress is water quality, and dissolved oxygen concentration is a key water-quality indicator. We are interested in the relationship between invertebrate abundance and dissolved oxygen, which ultimately ties back to the health of this wetland. This is a less traditional method of measuring ecosystem health, but can become more widely used with increasing data showing these relationships. This study applies to all wetland ecosystems and aquatic environments more broadly. In addition to being a metric of ecosystem health, invertebrate abundance compared to dissolved oxygen can tell us about the conditions that these invertebrates exist in. 
 
 ## Citations:
 
@@ -240,9 +251,6 @@ Lucchesi, D. O., Chipps, S. R., & Schumann, D. A. (2022). _Effects of seasonal h
 
 
 Suren, A. M., Lambert, P., & Sorrell, B. K. (2010). _The Impact of Hydrological Restoration on Benthic Aquatic Invertebrate Communities in a New Zealand Wetland_. Restoration Ecology, 19(6), 747–757. [https://doi.org/10.1111/j.1526-100x.2010.00723.x](https://doi.org/10.1111/j.1526-100x.2010.00723.x)
-
-
-NEED TO ADD
 
 
 ## Spearman Correlation Analysis for Total Abundance and DO levels
@@ -409,6 +417,7 @@ DO_taxa_medians <- DO_taxa |>
     .groups = "drop"
 )
 ```
+
 ```{r}
 #| label: DO_taxa_plot
 #| fig-width: 10
@@ -733,27 +742,43 @@ ggplot(taxon_abundance_time, aes(x = date, y = ave_lit, fill = taxon)) +
 ## Exploratory Figure 5: Distribution of Median Dissolved Oxygen Aross Sites
 ```{r}
 #| label: do-vs-sites-bins
-#| fig-width: 10
-#| fig-height: 8
+#| fig-width: 12
+#| fig-height: 6
 
 # create new object to store medians of median do levels
 median_fig2 <- aq_ins_clean_fig2 |> 
   group_by(site_full) |> 
   summarize(median_do = median(med_do, na.rm = TRUE))
 
-# assign quartiles for medians for each site
-median_fig2$quartile <- cut(
-  median_fig2$median_do, 
-  breaks = quantile(median_fig2$median_do, probs = seq(0, 1, 0.25)), 
+# assign quartiles for each site
+aq_ins_clean_fig2$quartile <- cut(
+  aq_ins_clean_fig2$med_do, 
+  breaks = quantile(aq_ins_clean_fig2$med_do, na.rm = TRUE, probs = seq(0, 1, 0.25)), 
   labels = c("Q1", "Q2", "Q3", "Q4"), 
   include.lowest = TRUE,
   right = FALSE)
 
 # boundaries of quartiles
-q <- quantile(median_fig2$median_do, probs = seq(0, 1, 0.25))
+q <- quantile(aq_ins_clean_fig2$med_do, na.rm = TRUE, probs = seq(0, 1, 0.25))
+
+view(q)
+
+dens <- density(aq_ins_clean_fig2$med_do, na.rm = TRUE)
+
+# one row per site
+label_df <- aq_ins_clean_fig2 |> 
+  group_by(site_full) |> 
+  summarize(median_do = median(med_do, na.rm = TRUE))
+
+# approximate density height for each site
+label_df$y <- approx(
+  dens$x,
+  dens$y,
+  xout = label_df$median_do
+)$y
 
 # distribution plot of DO levels across sites
-ggplot(median_fig2, aes(x = median_do)) +
+ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
   # density curve
   geom_density(fill = "lightblue",
                alpha = 0.4,
@@ -763,12 +788,27 @@ ggplot(median_fig2, aes(x = median_do)) +
   geom_vline(xintercept = q,
              linetype = "dashed",
              color = "gray40") +
+  # segments pointing to sites
+   geom_segment(
+    data = label_df,
+    aes(
+      x = median_do,
+      xend = median_do,
+      y = 0,
+      yend = 0.015
+    ),
+    color = "gray40"
+  ) +
   # site labels
-  geom_text_repel(aes(y = 0.01,
-                      label = str_wrap(site_full, width = 10)),
-                  size = 3,
-                  box.padding = 0.5,       # space around the text box
-                  show.legend = FALSE) +
+  geom_text(
+    data = label_df,
+    aes(
+      x = median_do,
+      y = 0.018,
+      label = str_wrap(site_full, width = 10)
+    ),
+    size = 3
+  ) +
   # quartile dashed line labels
   geom_text(data = data.frame(x = q, label = names(q)), 
             aes(x = x, y = 0.14, label = paste0(label, "\n", round(x, 2))),
@@ -784,13 +824,14 @@ ggplot(median_fig2, aes(x = median_do)) +
        title = "Distribution of Median Dissolved Oxygen Aross Sites") +
   # theme
   theme_bw() +
+  # remove legend
   theme(legend.position = "none")
 ```
-These bins were created by taking the median value of the median dissolved oxygen levels at each site. Low DO is the 25th percentile, moderate DO is the 75th percentile, and high DO is the 100th percentile.
+These bins were created by according to the median dissolved oxygen levels at each site. Low DO is the 25th percentile, moderate DO is the 75th percentile, and high DO is the 100th percentile. The labels show the median of the median DO measurments at each site.
 
 - Low DO: Phelps Road and North of Phelps Bridge
-- Moderate DO: South of Venoco Bridge, South of Phelps Bridge, Devereux Creek
-- High DO: North of Venoco Bridge, Main Channel
+- Moderate DO: South of Venoco Bridge, South of Phelps Bridge, Devereux Creek, North of Venoco Bridge
+- High DO: Main Channel
 
 ## Exploratory Figure 6: Invertebrate Abundance in DO Bins
 ```{r}
@@ -800,18 +841,18 @@ These bins were created by taking the median value of the median dissolved oxyge
 
 aq_ins_clean_bins <- aq_ins_clean |> 
   mutate(bins = case_when(site_full == "Phelps Road" ~ "low",
-                             site_full == "North of Phelps Bridge" ~ "low", 
-                             site_full == "South of Venoco Bridge" ~ "moderate",
-                             site_full == "South of Phelps Bridge" ~ "moderate",
-                             site_full =="Devereux Creek" ~ "moderate",
-                             site_full =="North of Venoco Bridge" ~ "high",
-                             site_full == "Main Channel" ~ "high")) |> 
+                          site_full == "North of Phelps Bridge" ~ "low", 
+                          site_full == "South of Venoco Bridge" ~ "moderate",
+                          site_full == "South of Phelps Bridge" ~ "moderate",
+                          site_full =="Devereux Creek" ~ "moderate",
+                          site_full =="North of Venoco Bridge" ~ "moderate",
+                          site_full == "Main Channel" ~ "high")) |> 
   mutate(taxon = str_replace_all(taxon, "_", " "), taxon = str_to_title(taxon)) |>
   filter(taxon %in% focus_taxa) |>
   # create column that calculates log-transformed abundance
   mutate(log_ave_lit = log(ave_lit + 1)) |> 
   mutate(bins = factor(bins, levels = c("low", "moderate", "high")))
-  
+
 
 # base layer: ggplot
 ins_bins_plot <- ggplot(data = aq_ins_clean_bins, 
@@ -820,9 +861,9 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins,
                                       color = taxon)) + # color by taxon
   # first layer: points show individual abundance measurements 
   geom_jitter(width = 0.15,
-            height = 0,
-            shape = 16,
-            size = 2,
+              height = 0,
+              shape = 16,
+              size = 2,
             alpha = 0.7) +
   # calculate median for each bin for each taxon
   stat_summary(fun = median,
