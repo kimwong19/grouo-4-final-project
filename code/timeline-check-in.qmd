@@ -455,14 +455,25 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
   theme(legend.position = "none")
 DO_taxa_plot
 ```
+
+Description of visual components
+
+This figure shows the relationship between Median DO (mg/L) and log + 1 transformed average invertebrate abundance/L for our five focus taxa. Each panel represents a different taxon. Each small point represents one observation of that taxon, with median dissolved oxygen shown on the x-axis in mg/L and log + 1 transformed average abundance per liter shown on the y-axis. The different colors distinguish the taxa, and the larger diamond in each panel represents the overall average/summary point for that taxon across observations.
+
+Main message / takeaway
+
+Overall, there does not appear to be a strong or consistent relationship between median dissolved oxygen and invertebrate abundance across all taxa. Some taxa, especially Copepods, Ostracods, and Cladocerans, show higher abundances at low to moderate dissolved oxygen levels, but the pattern is variable and differs by taxon.
+
+Connection to the main question
+
+This figure helps evaluate whether dissolved oxygen is related to invertebrate abundance in the study system. The variation among taxa suggests that dissolved oxygen may influence some invertebrate groups differently, but DO alone does not clearly explain abundance patterns across the full invertebrate community.
+
+
 ## Directly Relevant Figure 2: DO levels vs total invert. abundance
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
 # Summed abundance across focus taxa vs DO
-focus_taxa <- c("Cladocera", "Copepod", 
-                "Hemiptera Corixidae Boatman", 
-                "Nematode", "Ostracod")
 
 total_abundance <- DO_taxa |>
   filter(taxon %in% focus_taxa) |>
@@ -531,6 +542,19 @@ ggplot(total_abundance,
 ```{r}
 broom::tidy(total_abundance_lm)
 ```
+
+Description of visual components
+
+This figure shows the relationship between DO and total invertebrate abundance summed across our five focus taxa. Each pink point represents one sampling observation grouped by date, site, and median dissolved oxygen, where abundance was summed across the focus taxa and then log-transformed using log10(total_abundance + 1). The x-axis shows median dissolved oxygen in mg/L, and the y-axis shows log-transformed total invertebrate abundance. The purple line represents the predicted relationship from a linear model, and the light blue shaded area represents the confidence interval around the model prediction.
+
+Main message / takeaway
+
+The figure shows a negative relationship between DO and total invertebrate abundance, where total invertebrate abundance tends to decrease as dissolved oxygen increases. However, there is still noticeable variation around the trend line, so dissolved oxygen explains some, but not all, of the variation in total abundance.
+
+Connection to the main question
+
+This figure directly addresses whether dissolved oxygen is related to invertebrate abundance by combining the focus taxa into one community-level abundance measure. It helps contextualize the main question by showing that lower dissolved oxygen conditions are associated with higher invertebrate abundance in this dataset.
+
 ## Directly Relevant Figure 3: Abundance vs DO with binned levels
 ```{r}
 total_abundance <- total_abundance |>
@@ -577,6 +601,18 @@ ggplot(total_abundance,
   theme(legend.position = "none")
 ```
 
+Description of visual components
+
+This figure compares log-transformed total invertebrate abundance across three DO categories: Low DO, Medium DO, and High DO. Each black jittered point represents one sampling observation grouped by date, site, and median dissolved oxygen, where abundance was summed across the five focus taxa and transformed using log10(total_abundance + 1). The colored boxes show the middle 50% of abundance values for each DO category, the thick horizontal line inside each box represents the median, and the whiskers show the spread of values outside the interquartile range.
+
+Main message / takeaway
+
+Total invertebrate abundance appears lower in the High DO category compared with the Low DO and Medium DO categories. However, there is substantial overlap and variability among the DO categories, especially in the Medium DO group, so the difference is not extremely clear-cut from the visualization alone.
+
+Connection to the main question
+
+This figure helps address whether invertebrate abundance differs across dissolved oxygen levels by grouping continuous DO values into low, medium, and high categories. It shows that total invertebrate abundance may be higher under low-to-medium DO conditions and lower under high DO conditions in this dataset.
+
 # Other exploratory visualizations
 ## Exploratory Figure 1: Variance of DO across sights
 ```{r}
@@ -619,6 +655,19 @@ DO <- ggplot(data = aq_ins_clean_fig2,
 # show plot
 DO
 ```
+
+Description of visual components
+
+This figure shows how median DO varies across sampling sites. Each jittered open point represents one observation of median DO at a site, based on the focus invertebrate sampling data. The boxplots summarize the distribution of DO values at each site, where the box shows the IQR and the horizontal line inside the box shows the median. The large red point marks the median DO value for each site.
+
+Main message / takeaway
+
+There are clear differences in dissolved oxygen among sites. Main Channel has the highest DO values overall, while North of Phelps Bridge and Phelps Road tend to have the lowest DO values, with the other sites showing intermediate conditions.
+
+Connection to the main question
+
+This figure helps contextualize the main question by showing that dissolved oxygen is not uniform across the study area, and varies substantially by site. These differences in DO between sites may help explain patterns in invertebrate abundance, since organisms at different sites are experiencing different oxygen conditions.
+
 ## Exploratory Figure 2: Composition plot across DO bins
 ```{r}
 #| fig-width: 10
@@ -656,21 +705,26 @@ composition_plot <- DO_taxa |>
 # display plot
 composition_plot
 ```
+
+Description of visual components
+
+This figure shows how relative invertebrate community composition changes across three dissolved oxygen categories: Low DO, Medium DO, and High DO. Each stacked bar represents the total abundance of the focus taxa within one DO category, scaled to 100% so that the bar shows relative composition rather than raw abundance. Each colored segment within a bar represents the proportion contributed by one focus taxon and the y-axis shows the percent of the community made up by each group.
+
+Main message / takeaway
+
+The figure suggests that invertebrate community composition shifts across dissolved oxygen levels. Low DO sites have a more mixed community with large contributions from Cladocera and Ostracods, Medium DO sites are dominated by Copepods, and High DO sites are dominated primarily by Ostracods, while Hemiptera Corixidae Boatman and Nematodes remain minor components across all DO levels.
+
+Connection to the main question
+
+This figure helps address the main question by showing that dissolved oxygen may influence not only total invertebrate abundance, but also which taxa make up the community. It provides important context by suggesting that changes in oxygen conditions are associated with shifts in community structure, meaning different invertebrate groups may respond to different DO levels.
+
 ## Exploratory Figure 3: Time-series plot of total abundance (all species)
 ```{r}
-# species/taxa to include in the total abundance figure
-species_interest <- c(
-  "Ostracod",
-  "Copepod",
-  "Cladocera",
-  "Hemiptera Corixidae Boatman",
-  "Nematode"
-)
 
 # create total abundance over time
 total_abundance_time <- DO_taxa |>
   # keeps only the taxa of interest
-  filter(taxon %in% species_interest) |>
+  filter(taxon %in% focus_taxa) |>
   # makes sure date is treated as a date
   mutate(date = as.Date(date)) |>
   # groups by date only, so abundance is summed across sites and taxa
@@ -684,7 +738,8 @@ total_abundance_time <- DO_taxa |>
 # plot total abundance over time
 ggplot(total_abundance_time, aes(x = date, y = total_abundance)) +
   # adds a line connecting total abundance values over time
-  geom_line(linewidth = 1) +
+  geom_line(linewidth = 1,
+            color = 'green') +
   # adds points for each sampling date
   geom_point(size = 2) +
   # formats y-axis labels with commas
@@ -698,21 +753,26 @@ ggplot(total_abundance_time, aes(x = date, y = total_abundance)) +
   # uses a clean theme
   theme_minimal()
 ```
+
+Description of visual components
+
+This figure shows total abundance of the focus invertebrate taxa over time. Each black point represents one sampling date, where abundance was summed across all sites and across all taxa of interest. The green line connects sampling dates in chronological order to show changes in total abundance over time. The x-axis shows sampling date, and the y-axis shows total abundance.
+
+Main message / takeaway
+
+Total invertebrate abundance varies substantially over time, with one very large peak in 2020 and several smaller peaks in later years. There is no consistent increasing or decreasing trend across the full time period. Abundance appears highly variable among sampling dates.
+
+Connection to the main question
+
+This figure provides context for the dissolved oxygen and invertebrate abundance relationship by showing that abundance changes strongly across sampling dates. This is important because variation over time may influence observed abundance patterns in addition to dissolved oxygen levels.
+
 ## Exploratory Figure 4: Time-series area plot
 ```{r}
-# species/taxa to include in the area plot
-species_interest <- c(
-  "Ostracod",
-  "Copepod",
-  "Cladocera",
-  "Hemiptera Corixidae Boatman",
-  "Nematode"
-)
 
 # create abundance over time by taxon
 taxon_abundance_time <- DO_taxa |>
   # keeps only the taxa of interest
-  filter(taxon %in% species_interest) |>
+  filter(taxon %in% focus_taxa) |>
   # makes sure date is treated as a date
   mutate(date = as.Date(date)) |>
   # groups by date and taxon so each species stays separate
@@ -739,6 +799,20 @@ ggplot(taxon_abundance_time, aes(x = date, y = ave_lit, fill = taxon)) +
   # uses a clean theme
   theme_minimal()
 ```
+
+Description of visual components
+
+This figure shows changes in abundance over time for our five focus invertebrate taxa: Ostracod, Copepod, Cladocera, Hemiptera Corixidae Boatman, and Nematode. Each colored area represents the summed average abundance per liter for one taxon on each sampling date, summed across sites but kept separate by taxon. The stacked height of the colored areas represents the total abundance of all focus taxa combined at that sampling date. The x-axis shows sampling date, and the y-axis shows average abundance per liter.
+
+Main message / takeaway
+
+Abundance varies strongly over time, and different taxa contribute to peaks at different points. Copepods appear to drive the largest peak in 2020 and another increase near 2024, while Ostracods and Cladocera contribute noticeably to some intermediate peaks.
+
+Connection to the main question
+
+This figure adds temporal and taxon-specific context to the relationship between dissolved oxygen and invertebrate abundance. It shows that abundance patterns are not constant over time and that changes in total abundance may be driven by shifts in particular taxa, which is important when interpreting how the community responds to DO conditions.
+
+
 ## Exploratory Figure 5: Distribution of Median Dissolved Oxygen Aross Sites
 ```{r}
 #| label: do-vs-sites-bins
