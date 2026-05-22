@@ -4,6 +4,7 @@ format: pdf
 execute: 
   message: false
   warning: false
+toc: true
 ---
 # Set Up
 ## Packages
@@ -168,7 +169,7 @@ focus_taxa <- c("Ostracod", "Copepod", "Cladocera",
                 "Hemiptera Corixidae Boatman", "Nematode")
 ```
 
-### Creating DO_taxa, total_abundance, and DO bins (creating `do_category` column)
+### Creating `DO_taxa`, `total_abundance`, and DO bins
 ```{r}
 aq_ins_clean_bins <- aq_ins_clean |> 
   mutate(bins = case_when(site_full == "Phelps Road" ~ "low",
@@ -951,30 +952,31 @@ This figure helps address the main question by showing whether individual invert
 
 
 # Plan for elective 
-- should include some description/image of drafts
-- should include plan for making progress in the next two weeks
-
-Elective idea: add microscopic images of each of the 5 main inverts 
-
-Water color bubbles/ blow colored bubbles with watercolor around each to demonstrate how much dissolved oxygen each likes 
-
-- More bubbles = likes more DO
-
-- Less bubbles = likes less DO
-
+Draft 1:
 ```{r}
 #| echo: false
 #| out-width: "70%"
 
 knitr::include_graphics(here("code", "draft_elective.png"))
 ```
- 
+Draft 2:
+```{r}
+#| echo: false
+#| out-width: "70%"
+
+knitr::include_graphics(here("code", "new_draft_elective.png"))
+```
+Focus Taxa Images:
 ```{r}
 #| echo: false
 #| out-width: "30%"
 knitr::include_graphics(here("code", "elective_images.png"))
 ```
+**Elective idea general concept: **
+Our elective aims to show several factors we examined for the relationship between NCOS aquatic inverts and dissolved oxygen. Using the size of the microscopic images of each of the 5 main invert species, we are able to display abundance. The larger the picture, the more abundant that species is. We then plan to paint watercolor bubbles around each invert to show each species preferred DO levels. 
 
-Plan for next 2 weeks:
+**Progress we have made**: 
+Each of the microscopic images were collected through samples at the NCOS lab (with the exception of nematodes) for this elective. Another large area of progress that has been made is actually figuring out what the relationship between each invert and DO is. We found that there is little to no correlation between these two factors and that each invert prefers similar low levels of DO. 
 
-NEED TO ADD
+**Possible changes that should be made based on our findings**:
+Rather than bubbles representing each species proffered amount of DO, the bubbles could represent the strength of the relationship between the species abundance and the DO levels. For species with a negative correlation, we could draw the bubbles a different color. 
