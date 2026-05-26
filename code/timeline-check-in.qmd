@@ -165,7 +165,6 @@ aq_ins_clean <- aq_ins |>
 focus_taxa <- c("Ostracod", "Copepod", "Cladocera", 
                 "Hemiptera Corixidae Boatman", "Nematode")
 ```
-
 ### Creating `DO_taxa`, `total_abundance`, and DO bins
 ```{r}
 #| label: creating DO_taxa, total_abundance and DO bins
@@ -269,10 +268,16 @@ Suren, A. M., Lambert, P., & Sorrell, B. K. (2010). _The Impact of Hydrological 
 
 ## Spearman Correlation Analysis for Total Abundance and DO levels
 ```{r}
+#| label: Spearman Correlation Analysis
+# run a Spearman correlation test between log total abundance & median DO
 cor.test(
+  # use log-transformed total abundance as the first variable
   total_abundance$log_total_abundance,
+  # use median DO as the second variable
   total_abundance$med_do,
+  # specify Spearman method 
   method = "spearman",
+  # use approximate p-values
   exact = FALSE)
 ```
 Total log-transformed invertebrate abundance had a **weak negative** relationship with dissolved oxygen, but this relationship was not statistically significant using Spearman correlation.
@@ -281,64 +286,84 @@ Total log-transformed invertebrate abundance had a **weak negative** relationshi
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
+#| label: Correlation analysis for Each Focus Taxa and DO levels
 # create wide dataset (one column per taxon)
 taxa_wide <- DO_taxa |>
+  # keep only the columns needed 
   select(date, site, taxon, log_ave_lit, med_do) |>
-  pivot_wider(
-    names_from = taxon,
-    values_from = log_ave_lit
-  )
+  # convert the dataset from long format to wide format
+  pivot_wider(names_from = taxon, # create one new column for each taxon
+              # fill each taxon column with log-transformed abundance values
+              values_from = log_ave_lit)
 
 # calculate correlation of each taxon with dissolved oxygen
 # calculate Spearman correlation of each taxon with dissolved oxygen
 cor_do <- taxa_wide |>
+  # remove date and site columns so only DO and taxon abundance columns remain
   select(-date, -site) |>
+  # calculate correlations for each taxon column
   summarize(across(-med_do, ~ cor(.x,
+                                  # correlate each column w/ median DO
                                   med_do,
+                                  # specify spearman method
                                   method = "spearman",
+                                  # only use rows w/ complete observations 
                                   use = "complete.obs"))) |>
+  # convert the correlation results from wide format to long format
   pivot_longer(cols = everything(),
-               names_to = "taxon",
+               # store taxon names in a column called taxon
+               names_to = "taxon", 
+               # store correlation values in a column called correlation
                values_to = "correlation")
 
-ggplot(cor_do, aes(x = taxon, y = "Dissolved oxygen", fill = correlation)) +
+ggplot(cor_do, # create a new plot from cor_do
+       aes(x = taxon, # x-axis is taxon
+           y = "Dissolved oxygen", # titles y-axis
+           fill = correlation)) + # fill color by correlation
+  # add tiles where fill represents the strength + direction of correlation
   geom_tile(color = "grey70") +
+  # add circles sized by the absolute value of the correlation
   geom_point(aes(size = abs(correlation)), shape = 21, fill = "white") +
-  
-  # move labels ABOVE circles
+  # add labels above circles
   geom_text(aes(label = round(correlation, 2)),
-            nudge_y = 0.15,  # <-- this moves text up
-            size = 4) +
-  
+            # move the text labels slightly above the circles
+            nudge_y = 0.15, size = 4) +
+  # create a color scale for negative, neutral, and positive correlations
   scale_fill_gradient2(
+    # use red for negative correlations
     low = "red",
+    # use white for correlations near zero
     mid = "white",
+    # use blue for positive correlations
     high = "blue",
+    # sets midpoint to 0
     midpoint = 0,
+    # set the color scale limits from -1 to 1 
     limits = c(-1, 1),
-    name = "r"
-  ) +
+    # labels legend 'r'
+    name = "r") +
+  # set the range of circle sizes + remove the size legend
   scale_size(range = c(2, 10), guide = "none") +
-  labs(
-    x = "Taxon",
-    y = NULL,
-    title = "Spearman correlation between dissolved oxygen and invertebrate abundance"
-  ) +
+  labs(x = "Taxon", # labels x-axis
+       y = NULL, # remove the y-axis label
+       # creates descriptive title
+       title = "Spearman correlation between DO & invertebrate abundance") +
+  # usese non-default theme
   theme_minimal() +
-  theme(
-    panel.grid = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-
+  theme(panel.grid = element_blank(), # remove panel grid lines
+        # rotate x-axis labels to improve readability
+        axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 Most focus taxa showed **weak negative** correlations with dissolved oxygen, with Cladocera and Copepod showing the strongest negative relationships and Nematode showing almost no relationship.
 
 ## Pearson correlation for continuous DO and total community abundance
 ```{r}
-# Pearson correlation for continuous DO and total community abundance
-cor.test(total_abundance$log_total_abundance,
-         total_abundance$med_do,
-         method = "pearson") 
+#| label: Pearson correlation test between log total abundance + median DO
+# run a Pearson correlation test between log total abundance + median DO
+cor.test(
+  total_abundance$log_total_abundance, # log total abundance is first variable
+  total_abundance$med_do, # use median DO as the second variable
+         method = "pearson") # specify pearson method
 # r = -0.3749894, p = 0.02887
 # there is a significant negative correlation between abundance and continous DO
 ```
@@ -346,66 +371,43 @@ There was a **statistically significant negative linear relationship** between m
 
 ## Kruskal-Wallis test comparing abundance across DO categories
 ```{r}
+#| label: Kruskal-Wallis test log total abundance across DO categories
+# run a Kruskal-Wallis test comparing log total abundance across DO categories
 kruskal.test(log_total_abundance ~ do_category,
+             # use the total_abundance dataset
              data = total_abundance)
 # Kruskal-Wallis chi-squared = 3.2212, df = 2, p-value = 0.1998
 # there is not a significant difference between abundance and DO categories
 ```
 Total log-transformed invertebrate abundance **did not differ significantly** across low, moderate, and high DO categories.
 
-## Kruskal-Wallis test between abundance and bins for Copepods
-```{r}
-kruskal.test(log_ave_lit ~ bins,
-             data = aq_ins_clean_bins,
-             subset = taxon == "Copepod") 
-# Kruskal-Wallis chi-squared = 4.405, df = 2, p-value = 0.1105
-# no significant difference
-```
-Copepod abundance **did not differ significantly across DO bins**, suggesting DO category was not a strong predictor of Copepod abundance.
-
-## Kruskal-Wallis test between abundance and bins for Ostracods
-```{r}
-kruskal.test(log_ave_lit ~ bins,
-             data = aq_ins_clean_bins,
-             subset = taxon == "Ostracod") 
-# Kruskal-Wallis chi-squared = 6.7235, df = 2, p-value = 0.03467
-# significant difference of abundance btwn DO level bins
-```                                    
-Ostracod abundance **differed significantly across DO bins**, indicating that Ostracods may respond differently to low, moderate, and high DO conditions.
-
-## Pairwise test between abundance and individual bins for Ostracods
-```{r}
-bins_ostracods <- aq_ins_clean_bins |> 
-  filter(taxon == "Ostracod")
-pairwise.wilcox.test(
-  bins_ostracods$log_ave_lit,
-  bins_ostracods$bins,
-  p.adjust.method = "bonferroni") 
-# p = 0.051 for comparison btwn moderate and high DO level bins
-```
-After Bonferroni correction, the moderate vs. high DO comparison was close to significant, suggesting a possible difference in Ostracod abundance between these bins but not strong enough to conclude significance at $\alpha$ = 0.05.
-
 ## Chi-Square
 ```{r}
 # create abundance table for chi-square test
 chi_square_table <- aq_ins_clean_bins |>
+  # keep only rows with the focus taxa
   filter(taxon %in% focus_taxa) |>
+  # group data by DO bin + taxon
   group_by(bins, taxon) |>
   summarise(
+    # sum average abundance per liter + ignore missing values
     total_abundance = sum(ave_lit, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
+    # ungroup
+    .groups = "drop") |>
+  # convert the table from long format to wide format
   pivot_wider(
+    # create one column for each taxon
     names_from = taxon,
+    # fill taxon columns with total abundance values
     values_from = total_abundance,
-    values_fill = 0
-  ) |>
+    # fill missing values with 0
+    values_fill = 0) |>
+  # convert the bins column into row names
   column_to_rownames("bins") |>
+  # convert the table into a matrix
   as.matrix()
 
-view(chi_square_table)
-
-# show table used in chi-square test
+# show table
 chi_square_table
 
 # chi-square test for differences in taxon composition across DO bins
