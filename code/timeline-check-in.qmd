@@ -421,21 +421,23 @@ Taxon composition **differed significantly across DO bins**, suggesting that the
 # Visualizations directly relevant to answering questions
 ## Directly Relevant Figure 1: DO levels vs invert. abundance for each focus taxa
 ```{r}
-#| label: wrangle_data
-
+#| label: wrangle_data for figure 1
+# creates object DO_taxa_medians from DO_taxa
 DO_taxa_medians <- DO_taxa |>
   # groups data by taxon so each species gets one median point
   group_by(taxon) |>
   # calculates median DO and median log abundance for each taxon
   summarise(
+    # calculates the median DO value for each taxon
     med_do_point = median(med_do, na.rm = TRUE),
+    # calculates the median log-transformed average abundance for each taxon
     med_log_ave_lit = median(log_ave_lit, na.rm = TRUE),
-    .groups = "drop"
-)
+    # ungroup
+    .groups = "drop")
 ```
 
 ```{r}
-#| label: DO_taxa_plot
+#| label: figure 1 - DO_taxa_plot
 #| fig-width: 10
 #| fig-height: 8
 
@@ -448,14 +450,13 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
   geom_point(shape = 16, # shape is circle
              size = 2, # size is 2
              alpha = 0.7) + # opacity is 0.7
-  
   # second layer: larger point shows the median location for each taxon
   geom_point(data = DO_taxa_medians,
-             mapping = aes(x = med_do_point,
+             mapping = aes(x = med_do_point, # x value is median DO
+                           # y value is median log-transformed abundance
                            y = med_log_ave_lit),
-             shape = 18,
-             size = 5) +
-  
+             shape = 18, # makes shape of points diamond
+             size = 5) + # size of points is 5
   # separate panels for each taxon with free x- and y-axis scales
   facet_wrap(~ taxon, scales = "free") +
   # use non-default colors for points
@@ -464,11 +465,11 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
        y = "log + 1 transformed average abundance/L", # relabel y-axis
        # creates descriptive title
        title = "Invertebrate abundance as a function of DO") +
-  
   # uses non-default theme
   theme_minimal() +
   # remove redundant legend
   theme(legend.position = "none")
+# shows plot
 DO_taxa_plot
 ```
 
@@ -489,64 +490,66 @@ This figure helps evaluate whether dissolved oxygen is related to invertebrate a
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
+#| label: figure 2 -  DO levels vs total invert. abundance
 
-
-# fit linear model
-total_abundance_lm <- lm(log_total_abundance ~ med_do,
+# fit linear model for relationship between log abundance and median DO
+total_abundance_lm <- lm(log_total_abundance ~ med_do, 
+                         # use total_abundance as df
                          data = total_abundance)
 
-# create new data frame for predicted values
-total_abundance_predictions <- data.frame(
-  med_do = seq(min(total_abundance$med_do, na.rm = TRUE),
-               max(total_abundance$med_do, na.rm = TRUE),
-               length.out = 100)
-)
+# create new data frame total_abundance_predictions for predicted values
+total_abundance_predictions <- data.frame( 
+  # create a sequence of DO values from the minimum to maximum observed DO
+  med_do = seq(min(total_abundance$med_do, na.rm = TRUE), # max value is max DO
+               max(total_abundance$med_do, na.rm = TRUE), # min value is min DO
+               # creates 100 evenly spaced values for smooth predictions
+               length.out = 100))
 
 # generate predicted values and confidence intervals
 total_abundance_predictions <- total_abundance_predictions |>
-  bind_cols(
-    predict(total_abundance_lm,
+  bind_cols( # attach model predictions + confidence interval values to df
+    # predict log total abundance using the fitted linear model
+    predict(total_abundance_lm, 
+            # use the total_abundance_predictions df as data for prediction
             newdata = total_abundance_predictions,
+            # create confidence intervals around the fitted values
             interval = "confidence") |>
-      as.data.frame()
-  )
+      # convert prediction output into a data frame
+      as.data.frame())
 
-# plot raw data and model predictions
+# creat plot from total_abundance df
 ggplot(total_abundance,
-       aes(x = med_do,
-           y = log_total_abundance)) +
-  
-  # raw data points
-  geom_point(color = "magenta3",
-             size = 3,
-             alpha = 0.7) +
-  
-  # confidence interval around model predictions
-  geom_ribbon(data = total_abundance_predictions,
-              aes(x = med_do,
-                  ymin = lwr,
-                  ymax = upr),
-              inherit.aes = FALSE,
-              fill = "cyan2",
-              alpha = 0.35) +
-  
-  # predicted line from linear model
-  geom_line(data = total_abundance_predictions,
-            aes(x = med_do,
-                y = fit),
-            inherit.aes = FALSE,
-            color = "purple4",
-            linewidth = 1) +
-  
+       aes(x = med_do, # x-axis is total_abundance
+           y = log_total_abundance)) + # y-axis is log_total_abundance
+  # layer 1: create points  
+  geom_point(color = "magenta3", # color points
+             size = 3, # size of points is 3
+             alpha = 0.7) + # opacity of points is 0.7
+  # layer 2: creates ribbon confidence interval around model predictions
+  geom_ribbon(data = total_abundance_predictions, 
+              aes(x = med_do, # x is median DO
+                  ymin = lwr, # min on y is lower confidence interval
+                  ymax = upr), # max on y is lower confidence interval
+              inherit.aes = FALSE, # does not inherit ggplot aesthetics
+              fill = "cyan2", # colors ribbon
+              alpha = 0.35) + # opacity of points is 0.35
+  # layer 3: creates predicted line from linear model
+  geom_line(data = total_abundance_predictions, 
+            aes(x = med_do, # x is median DO
+                y = fit), # y is fitted model values
+            inherit.aes = FALSE,  # does not inherit ggplot aesthetics
+            color = "purple4", # colors prediction line
+            linewidth = 1) + # sets line width
   labs(
-    x = "Dissolved oxygen (mg/L)",
-    y = "Log total invertebrate abundance",
-    title = "Relationship between dissolved oxygen and total invertebrate abundance"
-  ) +
-  
+    x = "Dissolved oxygen (mg/L)", # labels x-axis
+    y = "Log total invertebrate abundance", # labels y-axis
+    # creates descriptive title
+    title = "Relationship between DO + total invertebrate abundance") +
+  # uses non-default theme
   theme_classic()
 ```
 ```{r}
+# show the linear model results in a tidy table format
 broom::tidy(total_abundance_lm)
 ```
 
@@ -564,34 +567,33 @@ This figure directly addresses whether dissolved oxygen is related to invertebra
 
 ## Directly Relevant Figure 3: Abundance vs DO with binned levels
 ```{r}
-ggplot(total_abundance,
-       aes(x = do_category,
-           y = log_total_abundance,
-           fill = do_category)) +
-  
-  geom_boxplot(alpha = 0.7,
-               outlier.color = "black",
-               outlier.size = 2) +
-  
-  # optional: add jittered points to show raw data
-  geom_jitter(width = 0.15,
-              alpha = 0.5,
-              size = 2,
-              color = "black") +
-  
+#| label: figure 3 - Abundance vs DO with binned levels
+ggplot(total_abundance, # uses total_abundance df
+       aes(x = do_category, # x-axis is do_category
+           y = log_total_abundance, # y-axis is log_total_abundance
+           fill = do_category)) + # fill color by do_category
+  # layer 1: add boxplots to summarize abundance distribution w/in each DO level 
+  geom_boxplot(alpha = 0.7, # transparency is 0.7
+               outlier.color = "red", # color outlier points red
+               outlier.size = 2) + # outlier size is 2
+  # layer 2: adds jittered points of raw data
+  geom_jitter(width = 0.15, # sets point width
+              alpha = 0.5, # sets point opacity
+              size = 2, # sets point size
+              color = "black") + # sets point color
   labs(
-    x = "Dissolved oxygen level",
-    y = "Log total invertebrate abundance",
-    title = "Invertebrate abundance across dissolved oxygen levels"
-  ) +
-  
+    x = "Dissolved oxygen level", # labels x-axis
+    y = "Log total invertebrate abundance", # labels y-axis
+    # creates descriptive title
+    title = "Invertebrate abundance across dissolved oxygen levels") +
+  # manually assign fill colors to each DO category
   scale_fill_manual(values = c(
-    "Low DO" = "red3",
-    "Medium DO" = "grey60",
-    "High DO" = "blue3"
-  )) +
-  
+    "Low DO" = "red3", # set Low DO color
+    "Medium DO" = "grey60", # set Medium DO color
+    "High DO" = "blue3")) + # set High DO color
+  # uses non-default theme
   theme_classic() +
+  # removes redundant legend
   theme(legend.position = "none")
 ```
 
