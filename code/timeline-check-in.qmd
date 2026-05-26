@@ -60,6 +60,42 @@ water_quality <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx")
                            sheet = "Water Quality",
                            na = c("", "n/a", "N/A", "over", "173+")) 
 ```
+## Creating Consistent Aesthetics
+```{r}
+#| label: Creating_Consistent_Aesthetics
+# shared color palette for taxon-based figures
+taxon_colors <- c(
+  "Copepod" = "#1B9E77",
+  "Ostracod" = "#D95F02",
+  "Cladocera" = "#7570B3",
+  "Hemiptera Corixidae Boatman" = "#E7298A",
+  "Nematode" = "#66A61E"
+)
+
+# shared color palette for DO-category figures
+do_colors <- c(
+  "low" = 'red3',
+  "moderate" = "white",
+  "high" = 'blue3')
+
+# shared colors for model lines, summary points, and raw points
+model_color <- "#4C78A8"
+summary_color <- "#222222"
+raw_point_color <- "#333333"
+ci_fill <- "#A6CEE3"
+reference_color <- "gray45"
+
+# shared theme for all figures
+theme_ncos <- theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    axis.title = element_text(size = 11),
+    axis.text = element_text(size = 9),
+    strip.background = element_rect(fill = "gray90", color = "gray50"),
+    strip.text = element_text(face = "bold"),
+    legend.position = "right"
+  )
+```
 
 ## Cleaning
 ### `sites` object
@@ -234,6 +270,7 @@ total_abundance$do_category <- factor(total_abundance$do_category,
                                       levels = c("Low DO", "Medium DO", "High DO"))
 ```
 
+
 # Ideas for analysis and background
 
 ## Ideas for analysis: 
@@ -284,8 +321,6 @@ Total log-transformed invertebrate abundance had a **weak negative** relationshi
 
 ## Correlation analysis for Each Focus Taxa and DO levels
 ```{r}
-#| fig-width: 10
-#| fig-height: 8
 #| label: Correlation analysis for Each Focus Taxa and DO levels
 # create wide dataset (one column per taxon)
 taxa_wide <- DO_taxa |>
@@ -331,28 +366,25 @@ ggplot(cor_do, # create a new plot from cor_do
   # create a color scale for negative, neutral, and positive correlations
   scale_fill_gradient2(
     # use red for negative correlations
-    low = "red",
+    low = do_colors["low"],
     # use white for correlations near zero
-    mid = "white",
+    mid = do_colors["mid"],
     # use blue for positive correlations
-    high = "blue",
+    high = do_colors["high"],
     # sets midpoint to 0
     midpoint = 0,
     # set the color scale limits from -1 to 1 
     limits = c(-1, 1),
-    # labels legend 'r'
-    name = "r") +
+    # labels legend 'Spearman r'
+    name = "Spearman r") +
   # set the range of circle sizes + remove the size legend
   scale_size(range = c(2, 10), guide = "none") +
   labs(x = "Taxon", # labels x-axis
        y = NULL, # remove the y-axis label
        # creates descriptive title
        title = "Spearman correlation between DO & invertebrate abundance") +
-  # usese non-default theme
-  theme_minimal() +
-  theme(panel.grid = element_blank(), # remove panel grid lines
-        # rotate x-axis labels to improve readability
-        axis.text.x = element_text(angle = 45, hjust = 1))
+  # use consistent theme
+  theme_ncos 
 ```
 Most focus taxa showed **weak negative** correlations with dissolved oxygen, with Cladocera and Copepod showing the strongest negative relationships and Nematode showing almost no relationship.
 
@@ -438,8 +470,6 @@ DO_taxa_medians <- DO_taxa |>
 
 ```{r}
 #| label: figure 1 - DO_taxa_plot
-#| fig-width: 10
-#| fig-height: 8
 
 DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot 
                         # uses DO_taxa data frame
@@ -459,14 +489,14 @@ DO_taxa_plot <- ggplot(data = DO_taxa, # assigns plot to object do_taxa_plot
              size = 5) + # size of points is 5
   # separate panels for each taxon with free x- and y-axis scales
   facet_wrap(~ taxon, scales = "free") +
-  # use non-default colors for points
-  scale_color_viridis_d() +
+  # use conssitent colors for points
+  scale_color_manual(values = taxon_colors) +
   labs(x = "Median DO (mg/L)", # relabel x-axis
        y = "log + 1 transformed average abundance/L", # relabel y-axis
        # creates descriptive title
        title = "Invertebrate abundance as a function of DO") +
-  # uses non-default theme
-  theme_minimal() +
+  # use consisten theme
+  theme_ncos +
   # remove redundant legend
   theme(legend.position = "none")
 # shows plot
@@ -488,8 +518,6 @@ This figure helps evaluate whether dissolved oxygen is related to invertebrate a
 
 ## Directly Relevant Figure 2: DO levels vs total invert. abundance
 ```{r}
-#| fig-width: 10
-#| fig-height: 8
 #| label: figure-2-do-levels-total-invert-abundance
 
 # fit linear model for relationship between log abundance and median DO
@@ -522,7 +550,7 @@ ggplot(total_abundance,
        aes(x = med_do, # x-axis is total_abundance
            y = log_total_abundance)) + # y-axis is log_total_abundance
   # layer 1: create points  
-  geom_point(color = "magenta3", # color points
+  geom_point(color = raw_point_color, # color points
              size = 3, # size of points is 3
              alpha = 0.7) + # opacity of points is 0.7
   # layer 2: creates ribbon confidence interval around model predictions
@@ -531,22 +559,22 @@ ggplot(total_abundance,
                   ymin = lwr, # min on y is lower confidence interval
                   ymax = upr), # max on y is lower confidence interval
               inherit.aes = FALSE, # does not inherit ggplot aesthetics
-              fill = "cyan2", # colors ribbon
+              fill = ci_fill, # colors ribbon
               alpha = 0.35) + # opacity of points is 0.35
   # layer 3: creates predicted line from linear model
   geom_line(data = total_abundance_predictions, 
             aes(x = med_do, # x is median DO
                 y = fit), # y is fitted model values
             inherit.aes = FALSE,  # does not inherit ggplot aesthetics
-            color = "purple4", # colors prediction line
+            color = model_color, # colors prediction line
             linewidth = 1) + # sets line width
   labs(
     x = "Dissolved oxygen (mg/L)", # labels x-axis
     y = "Log total invertebrate abundance", # labels y-axis
     # creates descriptive title
     title = "Relationship between DO + total invertebrate abundance") +
-  # uses non-default theme
-  theme_classic()
+  # use consistent theme
+  theme_ncos
 ```
 ```{r}
 # show the linear model results in a tidy table format
@@ -574,13 +602,13 @@ ggplot(total_abundance, # uses total_abundance df
            fill = do_category)) + # fill color by do_category
   # layer 1: add boxplots to summarize abundance distribution w/in each DO level 
   geom_boxplot(alpha = 0.7, # transparency is 0.7
-               outlier.color = "red", # color outlier points red
+               outlier.color = raw_point_color, # color outlier points 
                outlier.size = 2) + # outlier size is 2
   # layer 2: adds jittered points of raw data
   geom_jitter(width = 0.15, # sets point width
               alpha = 0.5, # sets point opacity
               size = 2, # sets point size
-              color = "black") + # sets point color
+              color = raw_point_color) + # sets point color
   labs(
     x = "Dissolved oxygen level", # labels x-axis
     y = "Log total invertebrate abundance", # labels y-axis
@@ -588,11 +616,14 @@ ggplot(total_abundance, # uses total_abundance df
     title = "Invertebrate abundance across dissolved oxygen levels") +
   # manually assign fill colors to each DO category
   scale_fill_manual(values = c(
-    "Low DO" = "red3", # set Low DO color
-    "Medium DO" = "grey60", # set Medium DO color
-    "High DO" = "blue3")) + # set High DO color
-  # uses non-default theme
-  theme_classic() +
+    # use red for low DO bin
+    "Low DO" = 'red3',
+    # use white for low mid bin
+    "Medium DO" = 'grey',
+    # use blue for low DO bin
+    "High DO" = 'blue3')) +
+  # uses consistent theme
+  theme_ncos +
   # removes redundant legend
   theme(legend.position = "none")
 ```
@@ -612,8 +643,6 @@ This figure helps address whether invertebrate abundance differs across dissolve
 # Other exploratory visualizations
 ## Exploratory Figure 1: Variance of DO across sights
 ```{r}
-#| fig-width: 10
-#| fig-height: 8
 #| label: exp. figure 1 - Variance of DO across sights
 # create object aq_ins_clean_fig2 from aq_ins_clean
 aq_ins_clean_fig2 <-  aq_ins_clean |>
@@ -631,19 +660,21 @@ DO <- ggplot(data = aq_ins_clean_fig2,
   # second layer: jittered points for salinity measurements
   geom_jitter(height = 0, # sets height of jitter
               width = 0.12, # sets width of jitter
+              color = raw_point_color, # colors jittered points
               shape = 21, # sets shape of jittered points
+              fill = "white", # sets fill color
               alpha = 0.6) + # sets opacity of jittered points
   # wrapping x-axis text for readability
   scale_x_discrete(labels = label_wrap(width = 15)) +
   # second layer: points to represent medians
   stat_summary(fun = median, # function is median value
-               color = "red", # colors median points
+               color = 'red3', # colors median points
                size = 1) + # sets size of median points
   labs(x = "Site", # labels x-axis
        y = "Median DO (mg/L)", # labels y-axis
        title = "Site DO levels") + # creates descriptive title
-  # uses non-default theme
-  theme_bw()
+  # uses consistent theme
+  theme_ncos
 
 # shows plot
 DO
@@ -663,8 +694,6 @@ This figure helps contextualize the main question by showing that dissolved oxyg
 
 ## Exploratory Figure 2: Composition plot across DO bins
 ```{r}
-#| fig-width: 10
-#| fig-height: 8
 #| label: exp. figure 2 - Composition plot across DO bins
 # creates obejct composition_plot using DO_taxa df
 composition_plot <- DO_taxa |> 
@@ -696,15 +725,17 @@ ggplot(aes(x = do_category, # x-axis is do_category
            fill = taxon)) + # fill color by taxon
   # create stacked bars scaled to proportions within each DO category
   geom_col(position = "fill") + 
+  # use consistent colors
+  scale_fill_manual(values = taxon_colors) +
   # format the y-axis as percentages
   scale_y_continuous(labels = scales::percent_format()) +
   labs(
     x = "Dissolved oxygen category", # relabels x-axis
     y = "Relative community composition", # relabels y-axis
     fill = "Taxon", # labels legend
-    title = "Invertebrate community composition shifts across dissolved oxygen levels"
-  ) +
-  theme_classic()
+    title = "Invertebrate community composition shifts across DO levels") +
+  # use consistent theme
+  theme_ncos
 
 composition_plot
 ```
@@ -757,9 +788,10 @@ ggplot(total_abundance_time,
            y = mean_total_abundance)) + # y-axis is mean_total_abundance
   # layer 1: adds a line connecting total abundance values over time
   geom_line(linewidth = 1, # sets line width
-            color = 'green') + # sets line color
+            color = model_color) + # sets line color
   # layer 2: adds points for each sampling date
-  geom_point(size = 2) + # sets point size
+  geom_point(size = 2, # sets point size
+             color = raw_point_color) + # sets point color
   # formats y-axis labels with commas
   scale_y_continuous(labels = scales::comma) +
   # formats the x-axis to show dates clearly
@@ -769,8 +801,8 @@ ggplot(total_abundance_time,
     title = "Monthly Mean Total Abundance of Species of Interest Over Time",
     x = "Month", # labels x-axis
     y = "Mean Total Abundance") + # labels y-axis
-  # uses non-default theme
-  theme_minimal()
+  # uses consistent theme ***NEED TO UPDATE TITLE FOR READABILITY***
+  theme_ncos
 ```
 
 Clarification: To reduce visual clutter from sampling dates that occurred close together, total abundance was first calculated for each sampling date and then averaged within each month. This monthly summary makes broader temporal patterns easier to interpret than plotting every individual sampling date.
@@ -829,6 +861,8 @@ ggplot(taxon_abundance_time,
            fill = taxon)) + # fill color by taxon
   # creates stacked area plot where total height is 100% of abundance per month
   geom_area(alpha = 0.8) + # sets opacity
+  # uses consistent colors
+  scale_fill_manual(values = taxon_colors) +
   # formats y-axis as percentages and keeps limits from 0% to 100%
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   # formats x-axis dates so monthly time patterns are easier to read
@@ -840,8 +874,8 @@ ggplot(taxon_abundance_time,
     x = "Month", # labels x-axis
     y = "Proportion of Monthly Abundance", # labels y-axis
     fill = "Taxon") +# labels fill legend
-  # uses non-default theme
-  theme_minimal() +
+  # uses consistent theme
+  theme_ncos +
   # rotates x-axis text to make month labels easier to read
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
@@ -864,9 +898,6 @@ This figure adds time and taxon-specific context to the relationship between dis
 ## Exploratory Figure 5: Distribution of Median Dissolved Oxygen Aross Sites
 ```{r}
 #| label: do-vs-sites-bins
-#| fig-width: 12
-#| fig-height: 6
-
 # create new object median_fig2 from aq_ins_clean_fig2
 median_fig2 <- aq_ins_clean_fig2 |> 
   # group by site_full
@@ -909,21 +940,21 @@ label_df$y <- approx(
 # distribution plot of DO levels across sites
 ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
   # layer 1: density curve
-  geom_density(fill = "lightblue", # determines color of fill of curve
+  geom_density(fill = ci_fill, # determines color of fill of curve
                alpha = 0.4, # determines opacity
-               color = "blue", # determines color of line of curve
+               color = model_color, # determines color of line of curve
                linewidth = 1.2) + # determines line width of curve
   # layer 2: vertical quartile lines
   geom_vline(xintercept = q,
              linetype = "dashed", # make quartile lines dashed
-             color = "gray40") + # set quartile line color
+             color = reference_color) + # set quartile line color
   # segments pointing to sites
    geom_segment(data = label_df, # use label_df data for site median markers
                 aes(x = median_do, # x-position is site median DO
                     xend = median_do, # keep ending x-position at site median DO
                     y = 0, # start segment at bottom of plot
                     yend = 0.015), # end segment slightly above bottom of plot
-                color = "gray40") + # set segment color
+                color = reference_color) + # set segment color
   # create site labels
   geom_text(data = label_df, # use label_df data
             aes(x = median_do, # place site labels at each site's median DO value
@@ -935,7 +966,7 @@ ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
   geom_text(data = data.frame(x = q, label = names(q)), 
             # label each quartile line with its name and rounded DO value
             aes(x = x, y = 0.14, label = paste0(label, "\n", round(x, 2))),
-            color = "gray40", # sets quartile label color
+            color = reference_color, # sets quartile label color
             size = 3.5, # sets quartile size color
             hjust = -0.1) + # shift text slightly to the right of the line
   # remove space between bottom of plot and y-axis, set y-axis limits
@@ -944,9 +975,9 @@ ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
   labs(x = "Median Dissolved Oxygen (mg/L)", # labels x-axis
        y = "Density", # labels y-axis
        # creates descriptive title
-       title = "Distribution of Median Dissolved Oxygen Aross Sites") +
-  # uses non-default theme
-  theme_bw() +
+       title = "Distribution of Median Dissolved Oxygen Across Sites") +
+  # uses consistent theme
+  theme_ncos
   # removes legend
   theme(legend.position = "none")
 ```
@@ -970,8 +1001,6 @@ This figure helps contextualize the main question by showing the range of dissol
 
 ## Exploratory Figure 6: Invertebrate Abundance in DO Bins
 ```{r}
-#| fig-width: 10
-#| fig-height: 8
 #| label: invert-abundance-at-bins
 
 # base layer: ggplot
@@ -988,18 +1017,18 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins, # uses aq_ins_clean_bins df
   # calculates median for each bin for each taxon
   stat_summary(fun = median, # uses median function
                geom = "point", # uses point geometry
-               color = "red", # colors median points red
+               color = "red3", # colors median points red
                size = 3) + # sets median point size
   # creates separate panels for each taxon 
   facet_wrap(~ taxon) +
-  # uses non-default colors for points
-  scale_color_viridis_d() +
+  # uses consistent colors for points
+  scale_color_manual(values = taxon_colors) +
   labs(x = "DO levels", # relabel x-axis
        y = "log + 1 transformed average abundance/L", # relabel y-axis
        # creates descriptive title
        title = "Invertebrate abundance vs DO levels") +
-  # uses non-default theme
-  theme_bw() +
+  # uses consistent theme
+  theme_ncos
   # remove redundant legend
   theme(legend.position = "none")
 
