@@ -217,7 +217,7 @@ total_abundance <- DO_taxa |>
 
 # updates the total_abundance object
 total_abundance <- total_abundance |>
-  # create a new variabledo_category based on DO quantiles
+  # create a new variable do_category based on DO quantiles
   mutate(
     # classify each observation into low, medium, or high dissolved oxygen
     do_category = case_when(
@@ -423,7 +423,7 @@ Taxon composition **differed significantly across DO bins**, suggesting that the
 ```{r}
 #| label: wrangle_data for figure 1
 # creates object DO_taxa_medians from DO_taxa
-DO_taxa_medians <- DO_taxa |>
+DO_taxa_medians <- total_abundance |>
   # groups data by taxon so each species gets one median point
   group_by(taxon) |>
   # calculates median DO and median log abundance for each taxon
@@ -614,41 +614,38 @@ This figure helps address whether invertebrate abundance differs across dissolve
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
+#| label: exp. figure 1 - Variance of DO across sights
 # create object aq_ins_clean_fig2 from aq_ins_clean
 aq_ins_clean_fig2 <-  aq_ins_clean |>
   # convert taxon to title case
-  mutate(taxon = str_replace_all(taxon, "_", " "),
-         taxon = str_to_title(taxon)) |> 
-  # filter to include focus taxa
+  mutate(taxon = str_replace_all(taxon, "_", " "), taxon = str_to_title(taxon)) |> 
+  # filter to only include focus taxa
   filter(taxon %in% focus_taxa)
 
-# base layer
+# base layer create plot from aq_ins_clean_fig2 df
 DO <- ggplot(data = aq_ins_clean_fig2,
-       # x-axis: site
-       # y-axis: mean salinity
-       mapping = aes(x = site_full,
-                     y = med_do)) +
+       mapping = aes(x = site_full, # x-axis: site
+                     y = med_do)) + # y-axis: mean salinity
   # first layer: boxplot
-  geom_boxplot(width = 0.35,
-               outlier.shape = NA) +
-  # second layer: salinity measurements at each survey
-  geom_jitter(height = 0,
-              width = 0.12,
-              shape = 21,
-              alpha = 0.6) +
-  # wrapping x-axis text
+  geom_boxplot(width = 0.35, outlier.shape = NA) +
+  # second layer: jittered points for salinity measurements
+  geom_jitter(height = 0, # sets height of jitter
+              width = 0.12, # sets width of jitter
+              shape = 21, # sets shape of jittered points
+              alpha = 0.6) + # sets opacity of jittered points
+  # wrapping x-axis text for readability
   scale_x_discrete(labels = label_wrap(width = 15)) +
-  # second layer: points to represent means
-  stat_summary(fun = median,
-               color = "red",
-               size = 1) +
-  # relabelling x- and y-axes
-  labs(x = "Site",
-       y = "Median DO (mh/L)",
-       title = "Site DO levels") +
-  # different theme
+  # second layer: points to represent medians
+  stat_summary(fun = median, # function is median value
+               color = "red", # colors median points
+               size = 1) + # sets size of median points
+  labs(x = "Site", # labels x-axis
+       y = "Median DO (mg/L)", # labels y-axis
+       title = "Site DO levels") + # creates descriptive title
+  # uses non-default theme
   theme_bw()
-# show plot
+
+# shows plot
 DO
 ```
 
@@ -668,37 +665,47 @@ This figure helps contextualize the main question by showing that dissolved oxyg
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-composition_plot <- DO_taxa |>
+#| label: exp. figure 2 - Composition plot across DO bins
+# creates obejct composition_plot using DO_taxa df
+composition_plot <- DO_taxa |> 
   mutate(
+    # classify each observation into low, medium, or high dissolved oxygen
     do_category = case_when(
+      # assign Low DO to values at or below the 25th percentile of median DO
       med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      # assign Medium DO to values between the 25th percentile - 75th percentile
       med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
-      TRUE ~ "High DO"
-    ),
+      # assign High DO to all remaining values above the 75th percentile
+      TRUE ~ "High DO"),
+    # convert do_category into a factor to control plotting order
     do_category = factor(do_category,
-                         levels = c("Low DO",
-                                    "Medium DO",
-                                    "High DO"))
-  ) |>
+                         # set order of DO categories on the x-axis
+                         levels = c("Low DO", "Medium DO", "High DO"))) |>
+  # groups by do_category and taxon
   group_by(do_category, taxon) |>
+  # calculate total abundance for each taxon within each DO category
   summarize(
+    # sum average abundance per liter + ignore missing values
     total_abundance = sum(ave_lit, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  ggplot(aes(x = do_category,
-             y = total_abundance,
-             fill = taxon)) +
-  geom_col(position = "fill") +
+    # ungroup
+    .groups = "drop") |>
+
+# create plot from composition_plot df
+ggplot(aes(x = do_category, # x-axis is do_category
+           y = total_abundance, # y-axis is total_abundance
+           fill = taxon)) + # fill color by taxon
+  # create stacked bars scaled to proportions within each DO category
+  geom_col(position = "fill") + 
+  # format the y-axis as percentages
   scale_y_continuous(labels = scales::percent_format()) +
   labs(
-    x = "Dissolved oxygen category",
-    y = "Relative community composition",
-    fill = "Taxon",
+    x = "Dissolved oxygen category", # relabels x-axis
+    y = "Relative community composition", # relabels y-axis
+    fill = "Taxon", # labels legend
     title = "Invertebrate community composition shifts across dissolved oxygen levels"
   ) +
   theme_classic()
 
-# display plot
 composition_plot
 ```
 
@@ -716,39 +723,57 @@ This figure helps address the main question by showing that dissolved oxygen may
 
 ## Exploratory Figure 3: Time-series plot of total abundance (all species)
 ```{r}
-
+#| label: exp. fig 3 - time-series plot of total abundance 
 # create total abundance over time
 total_abundance_time <- DO_taxa |>
   # keeps only the taxa of interest
   filter(taxon %in% focus_taxa) |>
-  # makes sure date is treated as a date
+  # makes sure date is treated as a date object
   mutate(date = as.Date(date)) |>
-  # groups by date only, so abundance is summed across sites and taxa
-  group_by(date) |>
-  # sums average abundance per liter across all taxa of interest
+  # creates a month column so close sampling dates are summarized together
+  mutate(month = lubridate::floor_date(date, unit = "month")) |>
+  # groups by date and month
+  group_by(date, month) |>
+  # calculates total abundance across sites and taxa for each sampling date
   summarise(
-    total_abundance = sum(ave_lit, na.rm = TRUE),
-    .groups = "drop"
-  )
+    # sums average abundance per liter across all focus taxa and sites
+    daily_total_abundance = sum(ave_lit, na.rm = TRUE),
+    # ungroup
+    .groups = "drop") |>
+  # groups daily abundance totals by month
+  group_by(month) |>
+  # calculates one summarized abundance value for each month
+  summarise(
+    # calculates mean total abundance for each month
+    mean_total_abundance = mean(daily_total_abundance, na.rm = TRUE),
+    # counts how many sampling dates are included in each monthly value
+    n_sampling_dates = n(),
+    # ungroup
+    .groups = "drop")
 
 # plot total abundance over time
-ggplot(total_abundance_time, aes(x = date, y = total_abundance)) +
-  # adds a line connecting total abundance values over time
-  geom_line(linewidth = 1,
-            color = 'green') +
-  # adds points for each sampling date
-  geom_point(size = 2) +
+ggplot(total_abundance_time, 
+       aes(x = month, # x-axis is month
+           y = mean_total_abundance)) + # y-axis is mean_total_abundance
+  # layer 1: adds a line connecting total abundance values over time
+  geom_line(linewidth = 1, # sets line width
+            color = 'green') + # sets line color
+  # layer 2: adds points for each sampling date
+  geom_point(size = 2) + # sets point size
   # formats y-axis labels with commas
   scale_y_continuous(labels = scales::comma) +
+  # formats the x-axis to show dates clearly
+  scale_x_date(date_breaks = "6 months", date_labels = "%b %Y") +
   # adds clear labels
-  labs(
-    title = "Total Abundance of Species of Interest Over Time",
-    x = "Sampling Date",
-    y = "Total Abundance"
-  ) +
-  # uses a clean theme
+  labs(# creates descriptive title
+    title = "Monthly Mean Total Abundance of Species of Interest Over Time",
+    x = "Month", # labels x-axis
+    y = "Mean Total Abundance") + # labels y-axis
+  # uses non-default theme
   theme_minimal()
 ```
+
+Clarification: To reduce visual clutter from sampling dates that occurred close together, total abundance was first calculated for each sampling date and then averaged within each month. This monthly summary makes broader temporal patterns easier to interpret than plotting every individual sampling date.
 
 Description of visual components
 
