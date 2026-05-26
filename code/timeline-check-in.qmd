@@ -490,7 +490,7 @@ This figure helps evaluate whether dissolved oxygen is related to invertebrate a
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-#| label: figure 2 -  DO levels vs total invert. abundance
+#| label: figure-2-do-levels-total-invert-abundance
 
 # fit linear model for relationship between log abundance and median DO
 total_abundance_lm <- lm(log_total_abundance ~ med_do, 
@@ -867,86 +867,87 @@ This figure adds time and taxon-specific context to the relationship between dis
 #| fig-width: 12
 #| fig-height: 6
 
-# create new object to store medians of median do levels
+# create new object median_fig2 from aq_ins_clean_fig2
 median_fig2 <- aq_ins_clean_fig2 |> 
+  # group by site_full
   group_by(site_full) |> 
+  # calculate the median DO value for each site
   summarize(median_do = median(med_do, na.rm = TRUE))
 
-# assign quartiles for each site
+# create new column in aq_ins_clean_fig2 that assigns quartiles for each site
 aq_ins_clean_fig2$quartile <- cut(
+  # use median DO values to assign quartile categories
   aq_ins_clean_fig2$med_do, 
-  breaks = quantile(aq_ins_clean_fig2$med_do, na.rm = TRUE, probs = seq(0, 1, 0.25)), 
+  # define quartile breaks using the 0%, 25%, 50%, 75%, and 100% quantiles
+  breaks = quantile(aq_ins_clean_fig2$med_do, probs = seq(0, 1, 0.25),
+                    na.rm = TRUE), # discludes NA values
+  # label each quartile group
   labels = c("Q1", "Q2", "Q3", "Q4"), 
+  # include the lowest DO value in the first quartile interval
   include.lowest = TRUE,
+  # make intervals left-closed and right-open
   right = FALSE)
 
 # boundaries of quartiles
-q <- quantile(aq_ins_clean_fig2$med_do, na.rm = TRUE, probs = seq(0, 1, 0.25))
-
-view(q)
-
+q <- quantile(aq_ins_clean_fig2$med_do, probs = seq(0, 1, 0.25), na.rm = T)
+# create a density object for median dissolved oxygen values
 dens <- density(aq_ins_clean_fig2$med_do, na.rm = TRUE)
 
-# one row per site
+# create new object label_df from aq_ins_clean_fig2
 label_df <- aq_ins_clean_fig2 |> 
+  # group the data by site so each site has one label location
   group_by(site_full) |> 
+  # calculate the median DO value for each site
   summarize(median_do = median(med_do, na.rm = TRUE))
 
 # approximate density height for each site
 label_df$y <- approx(
-  dens$x,
-  dens$y,
-  xout = label_df$median_do
-)$y
+  dens$x, # use the x-values from the density curve
+  dens$y, # estimate density height at each site's median DO value
+  xout = label_df$median_do)$y
 
 # distribution plot of DO levels across sites
 ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
-  # density curve
-  geom_density(fill = "lightblue",
-               alpha = 0.4,
-               color = "blue",
-               linewidth = 1.2) +
-  # vertical quartile lines
+  # layer 1: density curve
+  geom_density(fill = "lightblue", # determines color of fill of curve
+               alpha = 0.4, # determines opacity
+               color = "blue", # determines color of line of curve
+               linewidth = 1.2) + # determines line width of curve
+  # layer 2: vertical quartile lines
   geom_vline(xintercept = q,
-             linetype = "dashed",
-             color = "gray40") +
+             linetype = "dashed", # make quartile lines dashed
+             color = "gray40") + # set quartile line color
   # segments pointing to sites
-   geom_segment(
-    data = label_df,
-    aes(
-      x = median_do,
-      xend = median_do,
-      y = 0,
-      yend = 0.015
-    ),
-    color = "gray40"
-  ) +
-  # site labels
-  geom_text(
-    data = label_df,
-    aes(
-      x = median_do,
-      y = 0.018,
-      label = str_wrap(site_full, width = 10)
-    ),
-    size = 3
-  ) +
-  # quartile dashed line labels
+   geom_segment(data = label_df, # use label_df data for site median markers
+                aes(x = median_do, # x-position is site median DO
+                    xend = median_do, # keep ending x-position at site median DO
+                    y = 0, # start segment at bottom of plot
+                    yend = 0.015), # end segment slightly above bottom of plot
+                color = "gray40") + # set segment color
+  # create site labels
+  geom_text(data = label_df, # use label_df data
+            aes(x = median_do, # place site labels at each site's median DO value
+                y = 0.018, # sets vertical position for site labels
+                # wrap long site names for readability
+                label = str_wrap(site_full, width = 10)),
+            size = 3) + # sets site label text size
+  # creates quartile dashed line labels
   geom_text(data = data.frame(x = q, label = names(q)), 
+            # label each quartile line with its name and rounded DO value
             aes(x = x, y = 0.14, label = paste0(label, "\n", round(x, 2))),
-            color = "gray40",
-            size = 3.5,
+            color = "gray40", # sets quartile label color
+            size = 3.5, # sets quartile size color
             hjust = -0.1) + # shift text slightly to the right of the line
   # remove space between bottom of plot and y-axis, set y-axis limits
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(0, 0.15)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 0.15)) +
   # axes labels and title
-  labs(x = "Median Dissolved Oxygen (mg/L)",
-       y = "Density",
+  labs(x = "Median Dissolved Oxygen (mg/L)", # labels x-axis
+       y = "Density", # labels y-axis
+       # creates descriptive title
        title = "Distribution of Median Dissolved Oxygen Aross Sites") +
-  # theme
+  # uses non-default theme
   theme_bw() +
-  # remove legend
+  # removes legend
   theme(legend.position = "none")
 ```
 These bins were created by according to the median dissolved oxygen levels at each site. Low DO is the 25th percentile, moderate DO is the 75th percentile, and high DO is the 100th percentile. The labels show the median of the median DO measurments at each site.
@@ -974,24 +975,24 @@ This figure helps contextualize the main question by showing the range of dissol
 #| label: invert-abundance-at-bins
 
 # base layer: ggplot
-ins_bins_plot <- ggplot(data = aq_ins_clean_bins, 
+ins_bins_plot <- ggplot(data = aq_ins_clean_bins, # uses aq_ins_clean_bins df
                         mapping = aes(x = bins, # x-axis: DO bins
                                       y = log_ave_lit, # y-axis: log_ave_lit
                                       color = taxon)) + # color by taxon
   # first layer: points show individual abundance measurements 
-  geom_jitter(width = 0.15,
-              height = 0,
-              shape = 16,
-              size = 2,
-            alpha = 0.7) +
-  # calculate median for each bin for each taxon
-  stat_summary(fun = median,
-               geom = "point",
-               color = "red",
-               size = 3) +
-  # separate panels for each taxon 
+  geom_jitter(width = 0.15, # sets jitter width
+              height = 0, # sets jitter height
+              shape = 16, # sets jitter point shape
+              size = 2, # sets jitter point size
+              alpha = 0.7) + # sets jitter point opacity
+  # calculates median for each bin for each taxon
+  stat_summary(fun = median, # uses median function
+               geom = "point", # uses point geometry
+               color = "red", # colors median points red
+               size = 3) + # sets median point size
+  # creates separate panels for each taxon 
   facet_wrap(~ taxon) +
-  # use non-default colors for points
+  # uses non-default colors for points
   scale_color_viridis_d() +
   labs(x = "DO levels", # relabel x-axis
        y = "log + 1 transformed average abundance/L", # relabel y-axis
@@ -1025,20 +1026,24 @@ Draft 1:
 ```{r}
 #| echo: false
 #| out-width: "70%"
-
+#| lebel: draft-1
+# include the first draft elective image from the code folder
 knitr::include_graphics(here("code", "draft_elective.png"))
 ```
 Draft 2:
 ```{r}
 #| echo: false
 #| out-width: "70%"
-
+#| label: draft_2
+# include the second draft elective image from the code folder
 knitr::include_graphics(here("code", "new_draft_elective.png"))
 ```
 Focus Taxa Images:
 ```{r}
 #| echo: false
 #| out-width: "30%"
+#| label: Focus_Taxa_Image  
+# include the focus taxa image image from the code folder
 knitr::include_graphics(here("code", "elective_images.png"))
 ```
 **Elective idea general concept: **
