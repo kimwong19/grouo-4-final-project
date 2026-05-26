@@ -88,9 +88,9 @@ reference_color <- "gray45"
 # shared theme for all figures
 theme_ncos <- theme_classic() +
   theme(
-    plot.title = element_text(face = "bold", size = 13),
-    axis.title = element_text(size = 11),
-    axis.text = element_text(size = 9),
+    plot.title = element_text(face = "bold", size = 11),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 6),
     strip.background = element_rect(fill = "gray90", color = "gray50"),
     strip.text = element_text(face = "bold"),
     legend.position = "right"
@@ -368,7 +368,7 @@ ggplot(cor_do, # create a new plot from cor_do
     # use red for negative correlations
     low = do_colors["low"],
     # use white for correlations near zero
-    mid = do_colors["mid"],
+    mid = do_colors["moderate"],
     # use blue for positive correlations
     high = do_colors["high"],
     # sets midpoint to 0
@@ -382,7 +382,7 @@ ggplot(cor_do, # create a new plot from cor_do
   labs(x = "Taxon", # labels x-axis
        y = NULL, # remove the y-axis label
        # creates descriptive title
-       title = "Spearman correlation between DO & invertebrate abundance") +
+       title = "Crrelation between DO & invert. abundance") +
   # use consistent theme
   theme_ncos 
 ```
@@ -733,7 +733,7 @@ ggplot(aes(x = do_category, # x-axis is do_category
     x = "Dissolved oxygen category", # relabels x-axis
     y = "Relative community composition", # relabels y-axis
     fill = "Taxon", # labels legend
-    title = "Invertebrate community composition shifts across DO levels") +
+    title = "Community composition shifts across DO levels") +
   # use consistent theme
   theme_ncos
 
@@ -870,7 +870,7 @@ ggplot(taxon_abundance_time,
   # adds clear labels
   labs(
     # creates descriptive title
-    title = "Relative Abundance of Species of Interest Over Time",
+    title = "Relative Abundance of Focus Taxa Over Time",
     x = "Month", # labels x-axis
     y = "Proportion of Monthly Abundance", # labels y-axis
     fill = "Taxon") +# labels fill legend
@@ -975,9 +975,9 @@ ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
   labs(x = "Median Dissolved Oxygen (mg/L)", # labels x-axis
        y = "Density", # labels y-axis
        # creates descriptive title
-       title = "Distribution of Median Dissolved Oxygen Across Sites") +
+       title = "Distribution of Median DO Across Sites") +
   # uses consistent theme
-  theme_ncos
+  theme_ncos +
   # removes legend
   theme(legend.position = "none")
 ```
@@ -1028,7 +1028,7 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins, # uses aq_ins_clean_bins df
        # creates descriptive title
        title = "Invertebrate abundance vs DO levels") +
   # uses consistent theme
-  theme_ncos
+  theme_ncos +
   # remove redundant legend
   theme(legend.position = "none")
 
