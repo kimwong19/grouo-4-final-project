@@ -423,7 +423,7 @@ Taxon composition **differed significantly across DO bins**, suggesting that the
 ```{r}
 #| label: wrangle_data for figure 1
 # creates object DO_taxa_medians from DO_taxa
-DO_taxa_medians <- total_abundance |>
+DO_taxa_medians <- DO_taxa |>
   # groups data by taxon so each species gets one median point
   group_by(taxon) |>
   # calculates median DO and median log abundance for each taxon
@@ -789,37 +789,65 @@ This figure provides context for the dissolved oxygen and invertebrate abundance
 
 ## Exploratory Figure 4: Time-series area plot
 ```{r}
-
-# create abundance over time by taxon
+#| label: exp. figure 4 - Time-series area plot
+# create object taxon_abundance_time from DO_taxa
 taxon_abundance_time <- DO_taxa |>
-  # keeps only the taxa of interest
+  # keeps only the focus taxa
   filter(taxon %in% focus_taxa) |>
-  # makes sure date is treated as a date
+  # makes sure date is treated as a Date object
   mutate(date = as.Date(date)) |>
-  # groups by date and taxon so each species stays separate
-  group_by(date, taxon) |>
-  # sums across sites, but not across taxa
+  # creates a month column
+  mutate(month = lubridate::floor_date(date, unit = "month")) |>
+  # groups by date, month, and taxon 
+  group_by(date, month, taxon) |>
+  # sums abundance across sites for each taxon on each sampling date
   summarise(
-    ave_lit = sum(ave_lit, na.rm = TRUE),
-    .groups = "drop"
-  )
+    # calculates total abundance per taxon for each sampling date
+    daily_taxon_abundance = sum(ave_lit, na.rm = TRUE),
+    # ungroup
+    .groups = "drop") |>
+  # groups by month and taxon
+  group_by(month, taxon) |>
+  # calculates monthly mean abundance for each taxon
+  summarise(
+    # averages taxon abundance across sampling dates within each month
+    monthly_taxon_abundance = mean(daily_taxon_abundance, na.rm = TRUE),
+    # ungroup
+    .groups = "drop") |>
+  # groups by month 
+  group_by(month) |>
+  # calculates each taxon's proportion of total monthly abundance
+  mutate(# divides each taxon's monthly abundance by the total abundance per month
+    proportion = monthly_taxon_abundance / sum(monthly_taxon_abundance)) |>
+  # ungroup
+  ungroup()
 
-# create time series area plot by taxon
-ggplot(taxon_abundance_time, aes(x = date, y = ave_lit, fill = taxon)) +
-  # creates stacked area plot with a different color for each taxon
-  geom_area(alpha = 0.8) +
-  # formats y-axis labels with commas
-  scale_y_continuous(labels = scales::comma) +
+# create time series area plot using taxon_abundance_time df
+ggplot(taxon_abundance_time,
+       aes(x = month, # x-axis is month
+           y = proportion, # y-axis is proportion
+           fill = taxon)) + # fill color by taxon
+  # creates stacked area plot where total height is 100% of abundance per month
+  geom_area(alpha = 0.8) + # sets opacity
+  # formats y-axis as percentages and keeps limits from 0% to 100%
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  # formats x-axis dates so monthly time patterns are easier to read
+  scale_x_date(date_breaks = "6 months", date_labels = "%b %Y") +
   # adds clear labels
   labs(
-    title = "Abundance of Species of Interest Over Time",
-    x = "Sampling Date",
-    y = "Average Abundance per Liter",
-    fill = "Taxon"
-  ) +
-  # uses a clean theme
-  theme_minimal()
+    # creates descriptive title
+    title = "Relative Abundance of Species of Interest Over Time",
+    x = "Month", # labels x-axis
+    y = "Proportion of Monthly Abundance", # labels y-axis
+    fill = "Taxon") +# labels fill legend
+  # uses non-default theme
+  theme_minimal() +
+  # rotates x-axis text to make month labels easier to read
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+To make the time series easier to interpret, abundance was summarized by month rather than plotted for every individual sampling date. The stacked area plot shows the proportional contribution of each taxon to total monthly abundance, so the y-axis ranges from 0% to 100% and highlights changes in community composition over time.
+
 
 Description of visual components
 
