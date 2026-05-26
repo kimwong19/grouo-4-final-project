@@ -11,28 +11,29 @@ toc: true
 
 ```{r}
 #| label: packages
-
-# general use and cleaning
+# load in tidyverse package
 library(tidyverse)
+# load in here package
 library(here)
+# load in janitor package
 library(janitor)
+# load in snakecase package
 library(snakecase)
-
-# wrap axis labels
+# load in scales package
 library(scales)
-
-# read .xlsx files
+# load in readxl package
 library(readxl)
-
-# visualize missing data
+# load in naniar package
 library(naniar)
-
-# arrange plots
+# load in patchwork package
 library(patchwork)
-
-library(dplyr)     # data manipulation
-library(broom)     # tidy statistical output
+# load in dplyr package
+library(dplyr)
+# load in broom package
+library(broom)
+# load in corrplot package
 library(corrplot)
+# load in ggrepel package
 library(ggrepel)
 
 ```
@@ -43,20 +44,18 @@ library(ggrepel)
 
 ```{r}
 #| label: data
-
-# taxonomic information
+# read in taxonomic info data
 taxon_list <- read_csv(here("data", "taxon_list.csv"))
 
-# aquatic invertebrates
+# read in aquatic ivert. data
 aq_ins <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
                     sheet = "Aquatic Insects")
 
-
-# read in site information
+# read in site data
 sites <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
                    sheet = "sites")
 
-# read in water quality information
+# read in water quality data
 water_quality <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx"),
                            sheet = "Water Quality",
                            na = c("", "n/a", "N/A", "over", "173+")) 
@@ -66,7 +65,6 @@ water_quality <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx")
 ### `sites` object
 ```{r}
 #| label: ncos-site-object
-
 # creating new object from sites
 ncos_sites <- sites |> 
   # filter to only include NCOS sites sampled four times a year
@@ -75,7 +73,6 @@ ncos_sites <- sites |>
 ### Cleaning `taxon_list`
 ```{r}
 #| label: cleaning-taxon-list
-
 # creating new clean object from taxon_list
 taxon_list_clean <- taxon_list |> 
   # converting taxon name to snake case (no spaces or capital letters,
@@ -171,7 +168,10 @@ focus_taxa <- c("Ostracod", "Copepod", "Cladocera",
 
 ### Creating `DO_taxa`, `total_abundance`, and DO bins
 ```{r}
+#| label: creating DO_taxa, total_abundance and DO bins
+# create a new objecy aq_ins_clean_bins that adds DO bins to aq_ins_clean
 aq_ins_clean_bins <- aq_ins_clean |> 
+  # create a new bins column based on site_full values
   mutate(bins = case_when(site_full == "Phelps Road" ~ "low",
                              site_full == "North of Phelps Bridge" ~ "low", 
                              site_full == "South of Venoco Bridge" ~ "moderate",
@@ -179,10 +179,13 @@ aq_ins_clean_bins <- aq_ins_clean |>
                              site_full =="Devereux Creek" ~ "moderate",
                              site_full =="North of Venoco Bridge" ~ "high",
                              site_full == "Main Channel" ~ "high")) |> 
+  # replace underscores in taxon with spaces & convertto title case
   mutate(taxon = str_replace_all(taxon, "_", " "), taxon = str_to_title(taxon)) |>
+  # keep only taxa included in the focus_taxa object
   filter(taxon %in% focus_taxa) |>
   # create column that calculates log-transformed abundance
   mutate(log_ave_lit = log(ave_lit + 1)) |> 
+  # convert bins into an ordered factor 
   mutate(bins = factor(bins, levels = c("low", "moderate", "high")))
 
 # create object DO_taxa from aq_ins_clean
@@ -200,27 +203,36 @@ DO_taxa <- aq_ins_clean |>
   # keep only the columns needed for the figure
   select(date, site, site_full, taxon, ave_lit, log_ave_lit, med_do)
 
+# create objetc total_abundance from DO_taxa
 total_abundance <- DO_taxa |>
+  # keep only taxa included in the focus_taxa object
   filter(taxon %in% focus_taxa) |>
+  # group observations by date, site, and median DO
   group_by(date, site, med_do) |>
-  summarize(
-    total_abundance = sum(ave_lit, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
+  # sum average abundance per liter across taxa & ignore missing values
+  summarize(total_abundance = sum(ave_lit, na.rm = TRUE),
+            # ungroup
+            .groups = "drop") |>
+  # create a log10-transformed total abundance column called log_total_abundance
   mutate(log_total_abundance = log10(total_abundance + 1))
 
+# updates the total_abundance object
 total_abundance <- total_abundance |>
+  # create a new variabledo_category based on DO quantiles
   mutate(
+    # classify each observation into low, medium, or high dissolved oxygen
     do_category = case_when(
+      # assign Low DO to values at or below the 25th percentile of median DO
       med_do <= quantile(med_do, 0.25, na.rm = TRUE) ~ "Low DO",
+      # assign Medium DO to values between the 25th percentile - 75th percentile
       med_do <= quantile(med_do, 0.75, na.rm = TRUE) ~ "Medium DO",
-      TRUE ~ "High DO"
-    )
-  )
-total_abundance$do_category <- factor(
-  total_abundance$do_category,
-  levels = c("Low DO", "Medium DO", "High DO")
-)
+      # assign High DO to all remaining values above the 75th percentile
+      TRUE ~ "High DO"))
+
+# edit the column do_category into an ordered factor
+total_abundance$do_category <- factor(total_abundance$do_category,
+                                      # set the category order
+                                      levels = c("Low DO", "Medium DO", "High DO"))
 ```
 
 # Ideas for analysis and background
