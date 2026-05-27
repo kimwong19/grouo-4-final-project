@@ -362,7 +362,7 @@ ggplot(cor_do, # create a new plot from cor_do
   # add labels above circles
   geom_text(aes(label = round(correlation, 2)),
             # move the text labels slightly above the circles
-            nudge_y = 0.15, size = 4) +
+            nudge_y = 0.13, size = 4.5) +
   # create a color scale for negative, neutral, and positive correlations
   scale_fill_gradient2(
     # use red for negative correlations
@@ -379,12 +379,17 @@ ggplot(cor_do, # create a new plot from cor_do
     name = "Spearman r") +
   # set the range of circle sizes + remove the size legend
   scale_size(range = c(2, 10), guide = "none") +
+  # wrap long taxon labels
+  scale_x_discrete(labels = \(x) stringr::str_wrap(x, width = 12)) +
   labs(x = "Taxon", # labels x-axis
        y = NULL, # remove the y-axis label
        # creates descriptive title
-       title = "Crrelation between DO & invert. abundance") +
+       title = "Correlation between DO & invert. abundance") +
   # use consistent theme
-  theme_ncos 
+  theme_ncos +
+  theme(axis.text.y = element_text(size = 10), # change y axis text size
+        plot.title = element_text(hjust = 0.5), # adjust title alignment
+        panel.grid = element_blank()) # remove grid
 ```
 Most focus taxa showed **weak negative** correlations with dissolved oxygen, with Cladocera and Copepod showing the strongest negative relationships and Nematode showing almost no relationship.
 
@@ -896,14 +901,19 @@ Connection to the main question
 This figure adds time and taxon-specific context to the relationship between dissolved oxygen and invertebrate abundance. It shows that abundance patterns are not constant over time and that changes in total abundance may be driven by shifts in particular taxa, which is important when interpreting how the community responds to DO conditions.
 
 ## Exploratory Figure 5: Distribution of Median Dissolved Oxygen Aross Sites
+
 ```{r}
 #| label: do-vs-sites-bins
+
 # create new object median_fig2 from aq_ins_clean_fig2
 median_fig2 <- aq_ins_clean_fig2 |> 
   # group by site_full
   group_by(site_full) |> 
   # calculate the median DO value for each site
   summarize(median_do = median(med_do, na.rm = TRUE))
+
+# boundaries of quartiles
+q <- quantile(aq_ins_clean_fig2$med_do, probs = seq(0, 1, 0.25), na.rm = T)
 
 # create new column in aq_ins_clean_fig2 that assigns quartiles for each site
 aq_ins_clean_fig2$quartile <- cut(
@@ -912,17 +922,19 @@ aq_ins_clean_fig2$quartile <- cut(
   # define quartile breaks using the 0%, 25%, 50%, 75%, and 100% quantiles
   breaks = quantile(aq_ins_clean_fig2$med_do, probs = seq(0, 1, 0.25),
                     na.rm = TRUE), # discludes NA values
-  # label each quartile group
-  labels = c("Q1", "Q2", "Q3", "Q4"), 
-  # include the lowest DO value in the first quartile interval
-  include.lowest = TRUE,
-  # make intervals left-closed and right-open
-  right = FALSE)
+  labels = c("Q1", "Q2", "Q3", "Q4"), # label each quartile group
+  include.lowest = TRUE, # include the lowest DO value in the 1st quartile 
+  right = FALSE) # make intervals left-closed and right-open
+
+# create new object median_fig2 from aq_ins_clean_fig2
+median_fig2 <- aq_ins_clean_fig2 |> 
+  # group by site_full
+  group_by(site_full) |> 
+  # calculate the median DO value for each site
+  summarize(median_do = median(med_do, na.rm = TRUE))
 
 # boundaries of quartiles
 q <- quantile(aq_ins_clean_fig2$med_do, probs = seq(0, 1, 0.25), na.rm = T)
-# create a density object for median dissolved oxygen values
-dens <- density(aq_ins_clean_fig2$med_do, na.rm = TRUE)
 
 # create new object label_df from aq_ins_clean_fig2
 label_df <- aq_ins_clean_fig2 |> 
@@ -931,56 +943,77 @@ label_df <- aq_ins_clean_fig2 |>
   # calculate the median DO value for each site
   summarize(median_do = median(med_do, na.rm = TRUE))
 
-# approximate density height for each site
-label_df$y <- approx(
-  dens$x, # use the x-values from the density curve
-  dens$y, # estimate density height at each site's median DO value
-  xout = label_df$median_do)$y
 
-# distribution plot of DO levels across sites
+# create a small data frame for quartile labels
+quartile_df <- data.frame(
+  x = q, # store the original quartile x-values
+  # create adjusted x-positions so quartile labels do not overlap or get cut off
+  x_label = c(q[1] + 0.4, q[2] + 0.4, q[3] - 0.3, q[4] + 0.3, q[5] - 0.4),
+  # set all quartile labels near the top of the plot
+  y = c(0.148, 0.148, 0.148, 0.148, 0.148),
+  # create label text showing the quartile name and rounded DO value
+  label = paste0(names(q), "\n", round(q, 2)))
+
+# create distribution plot of median dissolved oxygen levels across sites
 ggplot(aq_ins_clean_fig2, aes(x = med_do)) +
-  # layer 1: density curve
-  geom_density(fill = ci_fill, # determines color of fill of curve
-               alpha = 0.4, # determines opacity
-               color = model_color, # determines color of line of curve
-               linewidth = 1.2) + # determines line width of curve
-  # layer 2: vertical quartile lines
+  # add density curve showing the distribution of median DO values
+  geom_density(fill = ci_fill,
+               alpha = 0.4, # sets transparency 
+               color = model_color, # sets color
+               linewidth = 1.2) +  # set density curve line thickness
+  # add vertical dashed lines at the quartile values
   geom_vline(xintercept = q,
              linetype = "dashed", # make quartile lines dashed
-             color = reference_color) + # set quartile line color
-  # segments pointing to sites
-   geom_segment(data = label_df, # use label_df data for site median markers
-                aes(x = median_do, # x-position is site median DO
-                    xend = median_do, # keep ending x-position at site median DO
-                    y = 0, # start segment at bottom of plot
-                    yend = 0.015), # end segment slightly above bottom of plot
-                color = reference_color) + # set segment color
-  # create site labels
-  geom_text(data = label_df, # use label_df data
-            aes(x = median_do, # place site labels at each site's median DO value
-                y = 0.018, # sets vertical position for site labels
-                # wrap long site names for readability
-                label = str_wrap(site_full, width = 10)),
-            size = 3) + # sets site label text size
-  # creates quartile dashed line labels
-  geom_text(data = data.frame(x = q, label = names(q)), 
-            # label each quartile line with its name and rounded DO value
-            aes(x = x, y = 0.14, label = paste0(label, "\n", round(x, 2))),
-            color = reference_color, # sets quartile label color
-            size = 3.5, # sets quartile size color
-            hjust = -0.1) + # shift text slightly to the right of the line
-  # remove space between bottom of plot and y-axis, set y-axis limits
-  scale_y_continuous(expand = c(0,0), limits = c(0, 0.15)) +
-  # axes labels and title
-  labs(x = "Median Dissolved Oxygen (mg/L)", # labels x-axis
-       y = "Density", # labels y-axis
-       # creates descriptive title
+             color = reference_color) + # set consistent color for quartile lines
+  # add short vertical segments marking the median DO value for each site
+  geom_segment(data = label_df, # use label_df data
+               aes(x = median_do, # map segment positions to site median DO values
+                   xend = median_do, # ending x-position at median DO value
+                   y = 0, # start each segment at the bottom of the plot
+                   yend = 0.012), # end segments slightly above the bottom of plot
+               color = reference_color, # set color for site marker segments
+               linewidth = 0.5) + # set segment line thickness
+  # add site labels with repelling so labels do not overlap
+  geom_label_repel(data = label_df, # use label_df data
+                   aes(x = median_do, # map label positions and label text
+                       y = 0.012, # place labels near the bottom of plot
+                       # wrap long site names so labels fit better
+                       label = str_wrap(site_full, width = 12)),
+                   size = 3, # set site label text size
+                   fill = "white", # make label background white
+                   color = "black", # make label text black
+                   label.size = 0.2, # set thickness of label box outline
+                   box.padding = 0.25, # add padding around label boxes
+                   point.padding = 0.15, # padding between labels + points
+                   segment.color = "gray50", # set color of repel lines
+                   min.segment.length = 0, # allow connectors at length 0
+                   seed = 123) + # make label placement reproducible
+  # add quartile labels in boxes at the top of the plot
+  geom_label(data = quartile_df, # uses quartile_df data
+             aes(x = x_label, # map quartile label positions + label text
+                 y = y, # place labels near the top of the plot
+                 label = label), # use quartile labels created in quartile_df
+             fill = "white", # make label background white 
+             color = reference_color, # set color for quartile text
+             label.size = 0.2, # set thickness of label box outline
+             size = 3.2, # set quartile label text size
+             vjust = 1) + # align labels downward from their y-position
+  # add axis labels and title
+  labs(x = "Median Dissolved Oxygen (mg/L)", # x-axis label
+       y = "Density", # y-axis label
+       # add a descriptive plot title
        title = "Distribution of Median DO Across Sites") +
-  # uses consistent theme
+  # add extra x-axis space so edge labels are not cut off
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.08))) +
+  # remove extra space at bottom of y-axis and set y-axis limits
+  scale_y_continuous(expand = c(0, 0),
+                     limits = c(0, 0.15)) + # set y-axis limits from 0 to 0.15
+  # use consistent theme
   theme_ncos +
-  # removes legend
+  # remove legend 
   theme(legend.position = "none")
 ```
+
 These bins were created by according to the median dissolved oxygen levels at each site. Low DO is the 25th percentile, moderate DO is the 75th percentile, and high DO is the 100th percentile. The labels show the median of the median DO measurments at each site.
 
 - Low DO: Phelps Road and North of Phelps Bridge
@@ -1009,7 +1042,7 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins, # uses aq_ins_clean_bins df
                                       y = log_ave_lit, # y-axis: log_ave_lit
                                       color = taxon)) + # color by taxon
   # first layer: points show individual abundance measurements 
-  geom_jitter(width = 0.15, # sets jitter width
+  geom_jitter(width = 0.12, # sets jitter width
               height = 0, # sets jitter height
               shape = 16, # sets jitter point shape
               size = 2, # sets jitter point size
@@ -1020,17 +1053,28 @@ ins_bins_plot <- ggplot(data = aq_ins_clean_bins, # uses aq_ins_clean_bins df
                color = "red3", # colors median points red
                size = 3) + # sets median point size
   # creates separate panels for each taxon 
-  facet_wrap(~ taxon) +
+  facet_wrap(~ taxon,
+             # wrap long strip labels so they fit inside each panel
+             labeller = labeller(taxon = label_wrap_gen(width = 18))) +
   # uses consistent colors for points
   scale_color_manual(values = taxon_colors) +
+  # relabel the x-axis categories to improve readability
+  scale_x_discrete(labels = c("low" = "Low", 
+                              "moderate" = "Moderate", 
+                              "high" = "High")) +
   labs(x = "DO levels", # relabel x-axis
        y = "log + 1 transformed average abundance/L", # relabel y-axis
        # creates descriptive title
        title = "Invertebrate abundance vs DO levels") +
   # uses consistent theme
   theme_ncos +
-  # remove redundant legend
-  theme(legend.position = "none")
+  theme(legend.position = "none", # remove redundant legend
+        # make facet strip text slightly smaller so long names fit better
+        strip.text = element_text(size = 10),
+        # make x-axis text slightly smaller
+        axis.text.x = element_text(size = 9),
+        # make y-axis text slightly smaller
+        axis.text.y = element_text(size = 9))
 
 # shows plot
 ins_bins_plot
