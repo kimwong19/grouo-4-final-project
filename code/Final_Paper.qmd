@@ -1,0 +1,15 @@
+---
+title: "Dissolved Oxygen and Aquatic Invertebrate Abundance at North Campus Open Space"
+author: "Stella Freedberg, Kimberly Wong, Sami Gibson"
+date: today
+format: 
+  pdf:
+    toc: true 
+    number-sections: true 
+bibliography: references.bib 
+execute: 
+  echo: false 
+  warning: false 
+  message: false 
+  results: hide ---
+---
