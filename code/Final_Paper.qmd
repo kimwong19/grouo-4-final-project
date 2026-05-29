@@ -12,6 +12,7 @@ execute:
   message: false 
   results: hide ---
 ---
+
 ```{r}
 #| label: packages
 # load in tidyverse package
@@ -39,6 +40,7 @@ library(corrplot)
 # load in ggrepel package
 library(ggrepel)
 ```
+
 ```{r}
 #| label: read-in-data
 # read in taxonomic info data
@@ -57,6 +59,7 @@ water_quality <- read_xlsx(here("data", "Aquatic Sampling Data-2026-03-10.xlsx")
                            sheet = "Water Quality",
                            na = c("", "n/a", "N/A", "over", "173+")) 
 ```
+
 ```{r}
 #| label: Creating-Consistent-Aesthetics
 # shared color palette for taxon-based figures
@@ -91,6 +94,7 @@ theme_ncos <- theme_classic() +
     legend.position = "right"
   )
 ```
+
 ```{r}
 #| label: cleaning-sites-object
 # creating new object from sites
@@ -98,6 +102,7 @@ ncos_sites <- sites |>
   # filter to only include NCOS sites sampled four times a year
   filter(sector == "NCOS" & sampling_frequency == "Quarterly")
 ```
+
 ```{r}
 #| label: cleaning-taxon-list
 # creating new clean object from taxon_list
@@ -106,6 +111,7 @@ taxon_list_clean <- taxon_list |>
   # only underscores)
   mutate(verbatim_name = to_any_case(verbatim_name, case = "snake"))
 ```
+
 ```{r}
 #| label: water-quality-cleaning
 
@@ -128,6 +134,7 @@ water_quality_clean <- water_quality |>
   # filter out salinity outliers
   filter(date_site != "2022-08-12_NVBR") 
 ```
+
 ```{r}
 #| label: cleaning-aq-ins
 
@@ -183,12 +190,14 @@ aq_ins_clean <- aq_ins |>
   mutate(site_full = fct_reorder(site_full, med_do, .fun = "median", .na_rm = TRUE),
          site_full = fct_rev(site_full))
 ```
+
 ```{r}
 #| label: creating-focus_taxa
 # taxa to include in all figures
 focus_taxa <- c("Ostracod", "Copepod", "Cladocera", 
                 "Hemiptera Corixidae Boatman", "Nematode")
 ```
+
 ```{r}
 #| label: creating-DO_taxa-total_abundance-and-DO-bins
 # create a new objecy aq_ins_clean_bins that adds DO bins to aq_ins_clean
@@ -256,7 +265,18 @@ total_abundance$do_category <- factor(total_abundance$do_category,
                                       # set the category order
                                       levels = c("Low DO", "Medium DO", "High DO"))
 ```
+
 # Introduction
+
+Wetland restoration projects are often evaluated using physical, chemical, and biological indicators because restoration success depends not only on habitat construction, but also on whether restored ecosystems support functioning biological communities. Aquatic invertebrates are useful indicators of wetland condition because their abundance and community composition can respond to changes in water quality, hydrology, vegetation, and habitat structure. Studies from multiple wetland systems show that restored or rehabilitated wetlands can support greater invertebrate abundance than imbalanced wetlands [@batzer2015]; [@lu2020]. This suggests that aquatic invertebrate communities can provide insight into restoration progress. As a result, aquatic invertebrate monitoring especially relevant at North Campus Open Space (NCOS) because it is a restored wetland where long-term monitoring can help evaluate how biological communities respond to changing environmental conditions.
+
+Dissolved oxygen (DO) is one important water-quality variable because aquatic organisms depend on oxygen for survival, metabolism, reproduction, and movement. Research has shown that low oxygen conditions can negatively affect aquatic invertebrates by reducing survival, emergence, growth, feeding, reproduction, and activity [@connolly2004]; [@galic2019]; [@collins2019]. However, the effects of DO are not always simple or uniform across taxa. Some invertebrates can tolerate moderate reductions in oxygen, while others are more sensitive to hypoxia or respond behaviorally by moving away from low-oxygen areas [@connolly2004]; [@ekau2010]. One study found that oxygen can be a strong predictor of macroinvertebrate richness, but other studies show that dissolved oxygen also interacts with factors such as temperature, water depth, precipitation, and habitat zone [@croijmans2021]; [@lucchesi2022]. Therefore, dissolved oxygen may influence both the total abundance of aquatic invertebrates and the relative abundance of different taxa within the community.
+
+Research conducted at other locations also suggests that dissolved oxygen can shape aquatic invertebrate community structure, not just total abundance. In Lake Huron coastal wetland wet meadows, dissolved oxygen gradients influenced oxygen-sensitive zoobenthos, although broader site and wetland differences also helped explain community patterns [@burton2009]. Similarly, one study found that seasonal hypoxia affected where macroinvertebrates were found in a reservoir, but taxa such as Cladocera and Copepoda were also influenced by water depth and monthly precipitation [@lucchesi2022]. These findings suggest that, while dissolved oxygen is ecologically important, its relationship with invertebrate abundance may be impacted by site conditions, seasonal change, and taxon-specific tolerance.
+
+At NCOS, previous analysis by UCSB students also examined relationships among algae, macroinvertebrates, and water quality. Their poster suggested that dissolved oxygen change over time and may be linked to macroinvertebrate abundance [@Huynh2023]. They also found that ostracods and copepods were among the most abundant taxa. However, their findings also indicated that other water-quality variables, such as conductivity, may influence diversity and abundance patterns. This is important because it indicates that dissolved oxygen levels should be interpreted as part of a broader set of environmental factors rather than as the only driver of invertebrate abundance.
+
+Building on previous previous, our analysis examines the relationship between dissolved oxygen and aquatic invertebrate abundance at NCOS. Specifically, we ask: **What is the strength and direction of the relationship between dissolved oxygen and invertebrate abundance?** To answer this question, we analyzed median dissolved oxygen levels (mg/L) and invertebrate abundance for our five focus taxa: Ostracod, Copepod, Cladocera, Hemiptera Corixidae Boatman, and Nematode. Throughout our analysis, we examined the relationship between DO and total invertebrate abundance, how DO varies across NCOS sites, taxon-specific abundance, abundance across DO categories, and community composition across low, medium, and high DO conditions.
 
 # Methods
 
@@ -537,7 +557,7 @@ ggplot(cor_do, # create a new plot from cor_do
         panel.grid = element_blank()) # remove grid
 ```
 
-To compare abundance across broader oxygen conditions, we grouped observations into low, medium, and high dissolved oxygen categories. Total log-transformed invertebrate abundance appeared lower in the High DO category than in the Low DO and Medium DO categories (Figure 4). However, there was substantial overlap among the categories, especially in the Medium DO group. 
+To compare abundance across broader oxygen conditions, we grouped observations into low, medium, and high dissolved oxygen categories. Total log-transformed invertebrate abundance appeared lower in the High DO category than in the Low DO and Medium DO categories (Figure 4). However, there was substantial overlap among the categories, especially in the Medium DO group.
 
 ## Figure 4: Total Invertebrate Abundance Across DO Levels
 
@@ -689,7 +709,7 @@ ggplot(aes(x = do_category, # x-axis is do_category
 composition_plot
 ```
 
-A Pearson’s chi-squared test showed that taxon composition differed significantly across DO bins, X² = 2859.2, df = 8, p < 2.2e-16. This provides strong evidence that the relative abundances of the focus taxa were not evenly distributed across low, medium, and high DO conditions. In other words, dissolved oxygen categories were strongly associated with changes in community composition, even though total abundance did not differ significantly across DO categories.
+A Pearson’s chi-squared test showed that taxon composition differed significantly across DO bins, X² = 2859.2, df = 8, p \< 2.2e-16. This provides strong evidence that the relative abundances of the focus taxa were not evenly distributed across low, medium, and high DO conditions. In other words, dissolved oxygen categories were strongly associated with changes in community composition, even though total abundance did not differ significantly across DO categories.
 
 ```{r}
 #| label: Pearson's-chi-square
@@ -728,7 +748,6 @@ chi_square_test
 ```
 
 Overall, the results suggest that the relationship between dissolved oxygen and invertebrate abundance at NCOS was weak-to-moderate and generally negative. Total invertebrate abundance decreased as DO increased when DO was analyzed as a continuous variable, but abundance differences across broad DO categories were not statistically significant. The strongest evidence of a DO-related pattern was seen in community composition, where the relative abundance of different taxa shifted strongly across oxygen categories. This indicates that dissolved oxygen may be more strongly related to which taxa dominate the invertebrate community than to total abundance alone.
-
 
 # Discussion
 
